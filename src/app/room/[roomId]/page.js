@@ -1,0 +1,375 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
+import { useAuth } from '../../../context/AuthContext';
+import { useSyncEngine } from '../../../hooks/useSyncEngine';
+import { localStore } from '../../../lib/supabase/client';
+import Navbar from '../../../components/Navbar';
+import UnifiedPlayer from '../../../components/UnifiedPlayer';
+import PlaylistManager from '../../../components/PlaylistManager';
+import ChatPanel from '../../../components/ChatPanel';
+import ParticipantList from '../../../components/ParticipantList';
+import QRCodeModal from '../../../components/QRCodeModal';
+import TrackUploadModal from '../../../components/TrackUploadModal';
+import PartyEndSummaryModal from '../../../components/PartyEndSummaryModal';
+import { 
+  Radio, 
+  Share2, 
+  Users, 
+  ListMusic, 
+  MessageSquare, 
+  Power, 
+  AlertTriangle,
+  Sparkles,
+  Crown
+} from 'lucide-react';
+
+export default function LiveRoomPage() {
+  const params = useParams();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const roomId = params?.roomId ? String(params.roomId).toUpperCase() : '';
+  const isHostQuery = searchParams.get('host') === 'true';
+
+  const { user, profile, signInAsGuest } = useAuth();
+  
+  // UI Tabs for Mobile / Sidebar
+  const [activeTab, setActiveTab] = useState('chat'); // 'chat' | 'playlist' | 'participants'
+  const [isQrOpen, setIsQrOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  // Initialize guest user if not yet authenticated
+  useEffect(() => {
+    if (!user) {
+      signInAsGuest();
+    }
+  }, [user, signInAsGuest]);
+
+  const activeUserId = user?.id || `user_${Math.random().toString(36).substring(2, 7)}`;
+  const activeUserName = profile?.display_name || user?.display_name || 'Jammer';
+  const activeAvatar = profile?.avatar_url || user?.avatar_url;
+
+  // Real-Time Sub-100ms Sync Engine Hook
+  const {
+    isConnected,
+    clockOffset,
+    roomState,
+    currentTrack,
+    currentTrackIndex,
+    isPlaying,
+    participants,
+    chatMessages,
+    partySummary,
+    isPartyEnded,
+    moderationAlert,
+    isMuted,
+    clearModerationAlert,
+    getSynchronizedTime,
+    play,
+    pause,
+    seek,
+    changeTrack,
+    updatePlaylist,
+    sendChatMessage,
+    warnUser,
+    kickUser,
+    toggleMuteUser,
+    endParty
+  } = useSyncEngine({
+    roomId,
+    userId: activeUserId,
+    username: activeUserName,
+    avatar: activeAvatar,
+    isHost: isHostQuery
+  });
+
+  // Effective Host Verification
+  const isHost = isHostQuery || (roomState?.hostId === activeUserId);
+
+  // Save lightweight party summary when party ends
+  useEffect(() => {
+    if (partySummary) {
+      localStore.savePartyHistory(partySummary);
+    }
+  }, [partySummary]);
+
+  // Playlist track handlers
+  const handleSelectTrack = (index) => {
+    if (isHost) {
+      changeTrack(index);
+    }
+  };
+
+  const handleRemoveTrack = (index) => {
+    if (!isHost || !roomState?.tracks) return;
+    const updated = roomState.tracks.filter((_, idx) => idx !== index);
+    let newIndex = currentTrackIndex;
+    if (index < currentTrackIndex) newIndex--;
+    updatePlaylist(updated, newIndex);
+  };
+
+  const handleReorderTracks = (newTracks, newIndex) => {
+    if (!isHost) return;
+    updatePlaylist(newTracks, newIndex);
+  };
+
+  const handleAddTrack = (newTrack) => {
+    if (!isHost) return;
+    const currentTracks = roomState?.tracks || [];
+    const updated = [...currentTracks, newTrack];
+    updatePlaylist(updated, currentTrackIndex);
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)' }}>
+      <Navbar currentRoomCode={roomId} isHost={isHost} />
+
+      {/* Moderation Warning Toast */}
+      {moderationAlert && (
+        <div style={{
+          position: 'fixed',
+          top: '90px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 90,
+          background: 'rgba(239, 68, 68, 0.95)',
+          color: '#fff',
+          padding: '14px 24px',
+          borderRadius: 'var(--radius-md)',
+          boxShadow: '0 8px 30px rgba(239, 68, 68, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          <AlertTriangle size={20} />
+          <div>
+            <p style={{ fontWeight: '700', fontSize: '0.9rem' }}>Host Warning</p>
+            <p style={{ fontSize: '0.85rem' }}>{moderationAlert.reason}</p>
+          </div>
+          <button
+            onClick={clearModerationAlert}
+            style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', marginLeft: '12px', fontWeight: '700' }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Main Room Layout */}
+      <main className="container" style={{ flex: 1, padding: '24px 16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {/* Room Header Controls */}
+        <div className="glass-panel" style={{
+          padding: '16px 24px',
+          borderRadius: 'var(--radius-lg)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '16px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '10px',
+              background: 'linear-gradient(135deg, #8b5cf6 0%, #06b6d4 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 0 15px rgba(139, 92, 246, 0.4)'
+            }}>
+              <Radio size={20} color="#ffffff" />
+            </div>
+
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <h1 style={{ fontSize: '1.3rem', fontWeight: '800', color: '#fff' }}>
+                  {roomState?.name || `Party Room ${roomId}`}
+                </h1>
+                <span className="badge badge-live">LIVE</span>
+                {isHost && <span className="badge badge-host"><Crown size={10} /> HOST</span>}
+              </div>
+
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                Code: <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', fontWeight: '700' }}>{roomId}</span> • {participants.length} Active Jammers • NTP Drift: {Math.abs(clockOffset).toFixed(1)}ms
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button
+              onClick={() => setIsQrOpen(true)}
+              className="btn-secondary"
+              style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+            >
+              <Share2 size={16} /> Invite Friends / QR
+            </button>
+
+            {isHost && (
+              <button
+                onClick={() => {
+                  if (confirm('Are you sure you want to end this party room for all participants?')) {
+                    endParty();
+                  }
+                }}
+                className="btn-icon"
+                style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.3)' }}
+                title="End Party"
+              >
+                <Power size={18} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Dynamic Multi-Column Jamming Layout */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr)',
+          gap: '20px',
+          flex: 1
+        }}>
+          {/* LEFT COLUMN: Unified Media Player & Visualizer */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <UnifiedPlayer
+              currentTrack={currentTrack || roomState?.tracks?.[currentTrackIndex]}
+              isPlaying={isPlaying}
+              isHost={isHost}
+              getSynchronizedTime={getSynchronizedTime}
+              onPlay={play}
+              onPause={pause}
+              onSeek={seek}
+              onNext={() => {
+                const tracks = roomState?.tracks || [];
+                if (currentTrackIndex < tracks.length - 1) {
+                  changeTrack(currentTrackIndex + 1);
+                }
+              }}
+              onPrevious={() => {
+                if (currentTrackIndex > 0) {
+                  changeTrack(currentTrackIndex - 1);
+                }
+              }}
+              hasNext={currentTrackIndex < (roomState?.tracks?.length || 1) - 1}
+              hasPrevious={currentTrackIndex > 0}
+            />
+
+            {/* Desktop Playlist Manager under player */}
+            <div style={{ flex: 1, minHeight: '320px' }}>
+              <PlaylistManager
+                tracks={roomState?.tracks || []}
+                currentTrackIndex={currentTrackIndex}
+                isHost={isHost}
+                isPlaying={isPlaying}
+                onSelectTrack={handleSelectTrack}
+                onRemoveTrack={handleRemoveTrack}
+                onReorderTracks={handleReorderTracks}
+                onOpenAddModal={() => setIsAddModalOpen(true)}
+              />
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN: Sidebar (Chat & Participants) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', height: '100%' }}>
+            {/* Tab Navigation */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '6px',
+              background: 'rgba(255, 255, 255, 0.04)',
+              padding: '4px',
+              borderRadius: 'var(--radius-md)'
+            }}>
+              <button
+                onClick={() => setActiveTab('chat')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  padding: '8px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: 'none',
+                  background: activeTab === 'chat' ? 'var(--primary)' : 'transparent',
+                  color: '#fff',
+                  fontWeight: '600',
+                  fontSize: '0.85rem',
+                  cursor: 'pointer'
+                }}
+              >
+                <MessageSquare size={14} /> Party Chat ({chatMessages.length})
+              </button>
+
+              <button
+                onClick={() => setActiveTab('participants')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  padding: '8px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: 'none',
+                  background: activeTab === 'participants' ? 'var(--primary)' : 'transparent',
+                  color: '#fff',
+                  fontWeight: '600',
+                  fontSize: '0.85rem',
+                  cursor: 'pointer'
+                }}
+              >
+                <Users size={14} /> Jammers ({participants.length})
+              </button>
+            </div>
+
+            {/* Tab Content */}
+            <div style={{ flex: 1, minHeight: '480px' }}>
+              {activeTab === 'chat' ? (
+                <ChatPanel
+                  messages={chatMessages}
+                  currentUserId={activeUserId}
+                  isHost={isHost}
+                  isMuted={isMuted}
+                  onSendMessage={sendChatMessage}
+                  onWarnUser={warnUser}
+                  onMuteUser={toggleMuteUser}
+                  onKickUser={kickUser}
+                />
+              ) : (
+                <ParticipantList
+                  participants={participants}
+                  currentUserId={activeUserId}
+                  isHost={isHost}
+                  onWarnUser={warnUser}
+                  onMuteUser={toggleMuteUser}
+                  onKickUser={kickUser}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* QR Code Sharing Modal */}
+      <QRCodeModal
+        isOpen={isQrOpen}
+        onClose={() => setIsQrOpen(false)}
+        roomId={roomId}
+        roomName={roomState?.name}
+      />
+
+      {/* Add Music Track Modal */}
+      <TrackUploadModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onAddTrack={handleAddTrack}
+      />
+
+      {/* Party Ended Summary Modal */}
+      <PartyEndSummaryModal
+        isOpen={isPartyEnded}
+        summary={partySummary}
+      />
+    </div>
+  );
+}

@@ -1,0 +1,30 @@
+{
+  "name": "supersonic-music-platform",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "dev:server": "node server/index.js",
+    "dev:all": "node scripts/start-all.js",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "server": "node server/index.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "canvas-confetti": "^1.9.3",
+    "cors": "^2.8.5",
+    "express": "^4.21.1",
+    "lucide-react": "^0.453.0",
+    "next": "14.2.15",
+    "qrcode": "^1.5.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1"
+  }
+}
