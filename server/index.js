@@ -296,6 +296,8 @@ io.on('connection', (socket) => {
       joinedAt: Date.now()
     };
 
+    console.log(`[Room Auth] ${roomId}: user=${socket.user.id}, host=${room.hostId}, isHost=${currentUser.isHost}`);
+
     socket.join(roomId);
     room.participants.set(socket.id, currentUser);
     room.peakParticipants = Math.max(room.peakParticipants, room.participants.size);

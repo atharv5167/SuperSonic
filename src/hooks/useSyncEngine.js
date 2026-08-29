@@ -107,7 +107,7 @@ export function useSyncEngine({ roomId, userId, username, avatar, isHost }) {
       // Join the room
       socketInstance.emit('room:join', {
         roomId,
-        userId,
+        userId: session.user.id,
         username,
         avatar,
         isHost
