@@ -43,9 +43,7 @@ export default function LiveRoomPage() {
     if (!isLoading && !user) router.replace(`/auth?next=/room/${roomId}`);
   }, [user, isLoading, router, roomId]);
 
-  if (isLoading || !user) return null;
-
-  const activeUserId = user.id;
+  const activeUserId = user?.id || '';
   const activeUserName = profile?.display_name || user?.display_name || 'Jammer';
   const activeAvatar = profile?.avatar_url || user?.avatar_url;
 
@@ -99,6 +97,9 @@ export default function LiveRoomPage() {
       });
     }
   }, [partySummary, activeUserId, activeUserName, isHost, roomState?.hostName]);
+
+  // Keep hook order stable while authentication is initializing.
+  if (isLoading || !user) return null;
 
   const handleLeaveRoom = () => {
     if (!isHost && roomState) {
