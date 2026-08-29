@@ -20,6 +20,7 @@ import {
   ArrowDown
 } from 'lucide-react';
 import { io } from 'socket.io-client';
+import { supabase } from '../../../lib/supabase/client';
 
 const SOCKET_SERVER_URL = process.env.NEXT_PUBLIC_SOCKET_URL ||
   (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001');
@@ -61,7 +62,7 @@ export default function CreateRoomPage() {
   };
 
   // Launch Party Room
-  const handleLaunchParty = () => {
+  const handleLaunchParty = async () => {
     if (!roomName.trim()) {
       setError('Please provide a party room name.');
       return;
@@ -74,12 +75,14 @@ export default function CreateRoomPage() {
 
     setIsCreating(true);
     const newRoomCode = generateRoomCode();
-    const activeUserId = user?.id || `host_${Date.now()}`;
+    const activeUserId = user.id;
     const activeUserName = profile?.display_name || user?.display_name || 'Party Host';
 
     // Register room on real-time sync server
     try {
-      const socket = io(SOCKET_SERVER_URL, { transports: ['websocket', 'polling'] });
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error('Your session expired. Please sign in again.');
+      const socket = io(SOCKET_SERVER_URL, { transports: ['websocket', 'polling'], auth: { accessToken: session.access_token } });
       
       socket.emit('room:init', {
         roomId: newRoomCode,

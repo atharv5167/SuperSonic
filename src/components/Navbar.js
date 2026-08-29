@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '../context/AuthContext';
 import { Radio, PlusCircle, LogIn, LogOut, User, Music, Compass } from 'lucide-react';
 
-export default function Navbar({ currentRoomCode = null, isHost = false }) {
+export default function Navbar({ currentRoomCode = null, isHost = false, onLeaveRoom = null }) {
   const { user, profile, signOut } = useAuth();
 
   return (
@@ -93,6 +93,12 @@ export default function Navbar({ currentRoomCode = null, isHost = false }) {
               <span className="badge badge-host" style={{ fontSize: '0.65rem' }}>HOST</span>
             )}
           </div>
+        )}
+
+        {currentRoomCode && !isHost && onLeaveRoom && (
+          <button onClick={onLeaveRoom} className="btn-secondary" style={{ padding: '8px 14px', fontSize: '0.8rem' }}>
+            Leave Room
+          </button>
         )}
 
         {/* Navigation & User Menu */}

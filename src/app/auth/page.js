@@ -18,6 +18,7 @@ export default function AuthPage() {
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [verificationMessage, setVerificationMessage] = useState('');
 
   const handleEmailAuth = async (e) => {
     e.preventDefault();
@@ -26,14 +27,23 @@ export default function AuthPage() {
 
     try {
       if (isSignUp) {
-        await signUpWithEmail(email, password, username, displayName);
-        alert('Account created! You are now logged in.');
+        const result = await signUpWithEmail(email, password, username, displayName);
+        if (!result?.session) {
+          setVerificationMessage(`Account created. Please verify your email address. A verification link has been sent to ${email}. Open it and click the link before signing in.`);
+          setIsSignUp(false);
+          return;
+        }
       } else {
         await signInWithEmail(email, password);
       }
       router.push('/dashboard');
     } catch (err) {
-      setError(err.message || 'Authentication failed. Please check your credentials.');
+      const message = err.message || '';
+      setError(/username|duplicate|unique/i.test(message)
+        ? 'Username is already taken. Please choose another username.'
+        : /already registered|already exists|user already/i.test(message)
+          ? 'This email is already registered. Please sign in instead.'
+          : (message || 'Authentication failed. Please check your credentials.'));
     } finally {
       setIsLoading(false);
     }
@@ -140,6 +150,12 @@ export default function AuthPage() {
             }}>
               <AlertCircle size={16} style={{ flexShrink: 0 }} />
               <span>{error}</span>
+            </div>
+          )}
+
+          {verificationMessage && (
+            <div style={{ background: 'rgba(6, 182, 212, 0.12)', border: '1px solid rgba(6, 182, 212, 0.4)', color: '#a5f3fc', padding: '12px 14px', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', marginBottom: '16px' }}>
+              {verificationMessage}
             </div>
           )}
 

@@ -12,7 +12,6 @@ import {
   Sparkles,
   Youtube,
   Music,
-  Gauge
 } from 'lucide-react';
 import { formatDuration, extractYouTubeId } from '../lib/utils';
 import AudioVisualizer from './AudioVisualizer';
@@ -34,7 +33,6 @@ export default function UnifiedPlayer({
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.85);
   const [isMuted, setIsMuted] = useState(false);
-  const [localSpeed, setLocalSpeed] = useState(1.0); // Participant local speed
   const [driftOffsetMs, setDriftOffsetMs] = useState(0);
 
   const audioRef = useRef(null);
@@ -80,7 +78,7 @@ export default function UnifiedPlayer({
         width: '100%',
         videoId: youtubeVideoId,
         playerVars: {
-          autoplay: isPlaying ? 1 : 0,
+          autoplay: 0,
           controls: 0,
           disablekb: 1,
           fs: 0,
@@ -111,7 +109,13 @@ export default function UnifiedPlayer({
     return () => {
       // Keep player intact across track changes
     };
-  }, [isYouTube, youtubeVideoId, ytReady, isPlaying, getSynchronizedTime]);
+  }, [isYouTube, youtubeVideoId, ytReady, getSynchronizedTime]);
+
+  useEffect(() => {
+    if (!isYouTube || !ytPlayerRef.current) return;
+    if (isPlaying) ytPlayerRef.current.playVideo?.();
+    else ytPlayerRef.current.pauseVideo?.();
+  }, [isYouTube, isPlaying]);
 
   // 3. Handle HTML5 Audio Source & Playback
   useEffect(() => {
@@ -157,29 +161,33 @@ export default function UnifiedPlayer({
       setDriftOffsetMs(driftMs);
 
       // Adaptive Playback Rate Steering
-      if (Math.abs(drift) > 0.12) {
-        // Severe drift (>120ms) -> Direct hard seek
+      if (Math.abs(drift) > 0.75) {
+        // Only correct substantial drift; tiny corrections cause audible chasing.
         if (isYouTube && ytPlayerRef.current?.seekTo) {
           ytPlayerRef.current.seekTo(expectedTime, true);
         } else if (audioRef.current) {
           audioRef.current.currentTime = expectedTime;
         }
-      } else if (Math.abs(drift) > 0.025) {
-        // Minor drift (25ms - 120ms) -> Micro-adjust rate for smooth catching up
+      } else if (Math.abs(drift) > 0.08) {
+        // Gently correct drift with playback rate when supported.
         const rateAdjustment = drift > 0 ? 1.03 : 0.97;
         if (audioRef.current) {
-          audioRef.current.playbackRate = rateAdjustment * localSpeed;
+          audioRef.current.playbackRate = rateAdjustment;
+        } else if (isYouTube && ytPlayerRef.current?.setPlaybackRate) {
+          ytPlayerRef.current.setPlaybackRate(rateAdjustment);
         }
       } else {
         // Locked in (<25ms)
         if (audioRef.current) {
-          audioRef.current.playbackRate = 1.0 * localSpeed;
+          audioRef.current.playbackRate = 1.0;
+        } else if (isYouTube && ytPlayerRef.current?.setPlaybackRate) {
+          ytPlayerRef.current.setPlaybackRate(1.0);
         }
       }
     }, 500);
 
     return () => clearInterval(interval);
-  }, [isPlaying, isYouTube, getSynchronizedTime, localSpeed]);
+  }, [isPlaying, isYouTube, getSynchronizedTime]);
 
   // 5. Volume & Mute Updates
   useEffect(() => {
@@ -415,33 +423,8 @@ export default function UnifiedPlayer({
           )}
         </div>
 
-        {/* Local Listening Controls (Volume & Speed) */}
+        {/* Local Listening Controls (Volume only) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
-          {/* Participant Local Speed */}
-          {!isHost && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Gauge size={15} color="var(--text-muted)" />
-              <select
-                value={localSpeed}
-                onChange={(e) => setLocalSpeed(parseFloat(e.target.value))}
-                style={{
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid var(--border-subtle)',
-                  color: 'var(--text-main)',
-                  borderRadius: '6px',
-                  padding: '4px 8px',
-                  fontSize: '0.8rem',
-                  outline: 'none'
-                }}
-              >
-                <option value="0.75">0.75x</option>
-                <option value="1.0">1.0x (Normal)</option>
-                <option value="1.25">1.25x</option>
-                <option value="1.5">1.5x</option>
-              </select>
-            </div>
-          )}
-
           {/* Local Volume Slider */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button

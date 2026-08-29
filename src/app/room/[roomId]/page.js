@@ -75,7 +75,8 @@ export default function LiveRoomPage() {
     warnUser,
     kickUser,
     toggleMuteUser,
-    endParty
+    endParty,
+    leaveRoom
   } = useSyncEngine({
     roomId,
     userId: activeUserId,
@@ -90,9 +91,34 @@ export default function LiveRoomPage() {
   // Save lightweight party summary when party ends
   useEffect(() => {
     if (partySummary) {
-      localStore.savePartyHistory(partySummary);
+      localStore.savePartyHistory({
+        ...partySummary,
+        userId: activeUserId,
+        role: isHost ? 'hosted' : 'participated',
+        hostName: partySummary.hostName || (isHost ? activeUserName : roomState?.hostName)
+      });
     }
-  }, [partySummary]);
+  }, [partySummary, activeUserId, activeUserName, isHost, roomState?.hostName]);
+
+  const handleLeaveRoom = () => {
+    if (!isHost && roomState) {
+      localStore.savePartyHistory({
+        roomId,
+        name: roomState.name,
+        startedAt: roomState.createdAt,
+        endedAt: Date.now(),
+        durationSeconds: Math.floor((Date.now() - (roomState.createdAt || Date.now())) / 1000),
+        peakParticipants: participants.length,
+        hostId: roomState.hostId,
+        hostName: roomState.hostName,
+        tracksPlayed: roomState.tracks || [],
+        userId: activeUserId,
+        role: 'participated'
+      });
+    }
+    leaveRoom();
+    router.push('/dashboard');
+  };
 
   // Playlist track handlers
   const handleSelectTrack = (index) => {
@@ -123,7 +149,7 @@ export default function LiveRoomPage() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)' }}>
-      <Navbar currentRoomCode={roomId} isHost={isHost} />
+      <Navbar currentRoomCode={roomId} isHost={isHost} onLeaveRoom={handleLeaveRoom} />
 
       {connectionError && (
         <div style={{ margin: '20px auto 0', maxWidth: '720px', width: 'calc(100% - 40px)', padding: '14px 18px', borderRadius: '10px', background: 'rgba(255, 87, 87, 0.14)', border: '1px solid rgba(255, 87, 87, 0.5)', color: '#ffb0b0', textAlign: 'center' }}>

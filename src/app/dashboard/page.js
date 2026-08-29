@@ -25,6 +25,8 @@ export default function DashboardPage() {
   const { user, profile, isLoading } = useAuth();
   const [partyHistory, setPartyHistory] = useState([]);
   const [quickCode, setQuickCode] = useState('');
+  const [selectedHistory, setSelectedHistory] = useState(null);
+  const [historyTab, setHistoryTab] = useState('hosted');
 
   useEffect(() => {
     if (!isLoading && !user) router.replace('/auth');
@@ -33,6 +35,10 @@ export default function DashboardPage() {
   }, [user, isLoading, router]);
 
   if (isLoading || !user) return null;
+
+  const visibleHistory = partyHistory.filter((item) =>
+    historyTab === 'hosted' ? item.role !== 'participated' : item.role === 'participated'
+  );
 
   const handleJoin = (e) => {
     e.preventDefault();
@@ -58,7 +64,7 @@ export default function DashboardPage() {
           gap: '24px',
           marginBottom: '36px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
             <img
               src={profile?.avatar_url || user?.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=user`}
               alt="avatar"
@@ -144,14 +150,15 @@ export default function DashboardPage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <History size={20} color="var(--accent-amber)" />
-              <h3 style={{ fontSize: '1.25rem', color: '#fff' }}>Party History & Lightweight Summaries</h3>
+              <h3 style={{ fontSize: '1.25rem', color: '#fff' }}>History</h3>
             </div>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>
-              Completed Sessions ({partyHistory.length})
-            </span>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button type="button" className={historyTab === 'hosted' ? 'btn-primary' : 'btn-secondary'} onClick={() => setHistoryTab('hosted')} style={{ padding: '7px 12px', fontSize: '0.8rem' }}>Hosted</button>
+              <button type="button" className={historyTab === 'participated' ? 'btn-primary' : 'btn-secondary'} onClick={() => setHistoryTab('participated')} style={{ padding: '7px 12px', fontSize: '0.8rem' }}>Participated</button>
+            </div>
           </div>
 
-          {partyHistory.length === 0 ? (
+          {visibleHistory.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 16px', color: 'var(--text-muted)' }}>
               <Sparkles size={36} style={{ margin: '0 auto 12px', opacity: 0.3 }} />
               <p style={{ fontSize: '1rem', color: '#fff', fontWeight: '600', marginBottom: '4px' }}>No Previous Parties Yet</p>
@@ -159,7 +166,7 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {partyHistory.map((item, index) => (
+              {visibleHistory.map((item, index) => (
                 <div
                   key={index}
                   style={{
@@ -179,7 +186,7 @@ export default function DashboardPage() {
                       {item.name || `Party Room ${item.roomId}`}
                     </h4>
                     <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>
-                      Room Code: <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)' }}>{item.roomId}</span> • {new Date(item.endedAt || item.startedAt).toLocaleDateString()}
+                      {historyTab === 'participated' && item.hostName ? `Host: ${item.hostName} • ` : ''}{new Date(item.endedAt || item.startedAt).toLocaleDateString()}
                     </p>
                   </div>
 
@@ -198,12 +205,35 @@ export default function DashboardPage() {
                       <Music size={16} color="var(--accent-amber)" />
                       <span>{item.tracksPlayed?.length || 0} Songs</span>
                     </div>
+                    <button type="button" className="btn-secondary" onClick={() => setSelectedHistory(item)} style={{ padding: '7px 12px', fontSize: '0.8rem' }}>
+                      See More <ArrowRight size={14} />
+                    </button>
                   </div>
                 </div>
               ))}
             </div>
           )}
         </div>
+
+        {selectedHistory && (
+          <div className="glass-panel" style={{ marginTop: '20px', padding: '28px', borderRadius: 'var(--radius-lg)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', marginBottom: '16px' }}>
+              <div>
+                <h3 style={{ color: '#fff', fontSize: '1.25rem' }}>{selectedHistory.name || 'Room Details'}</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{new Date(selectedHistory.endedAt || selectedHistory.startedAt).toLocaleString()}</p>
+              </div>
+              <button type="button" className="btn-secondary" onClick={() => setSelectedHistory(null)} style={{ padding: '6px 12px' }}>Close</button>
+            </div>
+            <h4 style={{ color: '#fff', marginBottom: '10px' }}>Music Played</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {(selectedHistory.tracksPlayed || []).map((track, index) => (
+                <div key={track.id || index} style={{ color: 'var(--text-main)', fontSize: '0.9rem' }}>
+                  {index + 1}. {track.title || track} {track.source_type ? `— ${track.source_type.toUpperCase()}` : ''}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

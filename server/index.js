@@ -40,6 +40,7 @@ function createRoomState(roomId, hostId, hostName, roomName = 'SuperSonic Party'
     id: roomId,
     name: roomName,
     hostId: hostId,
+    hostName: hostName,
     hostSocketId: null,
     status: 'active', // 'active' | 'ended'
     createdAt: Date.now(),
@@ -80,6 +81,51 @@ async function authenticateToken(token) {
   if (!supabaseServer || !token) return null;
   const { data, error } = await supabaseServer.auth.getUser(token);
   return error ? null : data.user;
+}
+
+async function persistRoom(room) {
+  if (!supabaseServer) return;
+  const { data, error } = await supabaseServer.from('rooms').upsert({
+    room_code: room.id,
+    name: room.name,
+    host_id: room.hostId,
+    status: room.status,
+    settings: { source: 'socket' }
+  }, { onConflict: 'room_code' }).select('id').single();
+  if (error) {
+    console.error('[Room Persistence Error]', error.message);
+    return;
+  }
+  room.dbId = data.id;
+  if (!room.tracks.length) return;
+  await supabaseServer.from('room_tracks').delete().eq('room_id', room.dbId);
+  const { error: tracksError } = await supabaseServer.from('room_tracks').insert(room.tracks.map((track, index) => ({
+    room_id: room.dbId,
+    title: track.title || 'Untitled Track',
+    artist: track.artist || track.author || 'Unknown Artist',
+    source_type: track.source_type || 'stream',
+    source_url: track.source_url,
+    duration: track.duration || 0,
+    thumbnail_url: track.thumbnail_url || null,
+    order_index: index
+  })));
+  if (tracksError) console.error('[Track Persistence Error]', tracksError.message);
+}
+
+async function persistHistory(room, summary) {
+  if (!supabaseServer || !room.dbId) return;
+  const { error } = await supabaseServer.from('party_history').insert({
+    room_id: room.dbId,
+    room_code: room.id,
+    name: room.name,
+    host_id: room.hostId,
+    started_at: new Date(room.createdAt).toISOString(),
+    ended_at: new Date(summary.endedAt).toISOString(),
+    duration_seconds: summary.durationSeconds,
+    peak_participants: summary.peakParticipants,
+    tracks_played: summary.tracksPlayed
+  });
+  if (error) console.error('[History Persistence Error]', error.message);
 }
 
 async function requireApiUser(req, res, nextHandler) {
@@ -169,7 +215,7 @@ io.on('connection', (socket) => {
   });
 
   // 2. Room Initialization / Registration (Host or Participant)
-  socket.on('room:init', ({ roomId, hostId, hostName, roomName, initialTracks = [] }, callback) => {
+  socket.on('room:init', async ({ roomId, hostId, hostName, roomName, initialTracks = [] }, callback) => {
     hostId = socket.user.id;
     let room = rooms.get(roomId);
     if (!room) {
@@ -183,6 +229,8 @@ io.on('connection', (socket) => {
       // Re-activate if host is re-entering
       room.status = 'active';
     }
+
+    await persistRoom(room);
 
     if (callback) callback({ success: true, room: sanitizeRoomState(room) });
   });
@@ -433,6 +481,7 @@ io.on('connection', (socket) => {
     if (typeof newCurrentIndex === 'number') {
       room.currentTrackIndex = Math.min(Math.max(0, newCurrentIndex), Math.max(0, room.tracks.length - 1));
     }
+    persistRoom(room);
 
     console.log(`[Playlist Updated] Room: ${roomId}, Total Tracks: ${room.tracks.length}`);
 
@@ -558,18 +607,27 @@ io.on('connection', (socket) => {
     const summary = {
       roomId: room.id,
       hostId: room.hostId,
+      hostName: room.hostName,
       name: room.name,
       startedAt: room.createdAt,
       endedAt: Date.now(),
       durationSeconds: durationSeconds,
       peakParticipants: room.peakParticipants,
       totalParticipants: room.peakParticipants,
-      tracksPlayed: Array.from(room.tracksPlayedHistory)
+      tracksPlayed: room.tracks.map((track) => ({
+        id: track.id,
+        title: track.title,
+        artist: track.artist,
+        source_type: track.source_type,
+        source_url: track.source_url,
+        thumbnail_url: track.thumbnail_url
+      }))
     };
 
     room.status = 'ended';
     room.endedAt = Date.now();
     room.playbackState.isPlaying = false;
+    persistHistory(room, summary);
 
     console.log(`[Party Ended] Room: ${roomId}, Duration: ${durationSeconds}s, Peak: ${room.peakParticipants}`);
 
@@ -588,6 +646,22 @@ io.on('connection', (socket) => {
         console.log(`[Room Cleaned] Temporary memory wiped for room ${roomId}`);
       }
     }, 5 * 60 * 1000);
+  });
+
+  // Explicit participant leave (without ending the host's room)
+  socket.on('room:leave', ({ roomId } = {}) => {
+    if (!roomId || currentRoomId !== roomId) return;
+    const room = rooms.get(roomId);
+    const user = room?.participants.get(socket.id);
+    if (!room || !user) return;
+    room.participants.delete(socket.id);
+    socket.leave(roomId);
+    currentRoomId = null;
+    currentUser = null;
+    io.to(roomId).emit('room:participants_updated', {
+      participants: Array.from(room.participants.values()),
+      count: room.participants.size
+    });
   });
 
   // 14. Disconnection Handling
@@ -624,6 +698,7 @@ function sanitizeRoomState(room) {
     id: room.id,
     name: room.name,
     hostId: room.hostId,
+    hostName: room.hostName,
     status: room.status,
     createdAt: room.createdAt,
     tracks: room.tracks,

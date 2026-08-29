@@ -7,6 +7,20 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- 1. Profiles Table (Extends Supabase Auth users)
+-- Run once if MP3 uploads are enabled. This bucket is public so authenticated
+-- room participants can stream the persisted audio URL.
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('party-audio', 'party-audio', true)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "Authenticated users can upload party audio"
+ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (bucket_id = 'party-audio' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+CREATE POLICY "Anyone can stream party audio"
+ON storage.objects FOR SELECT TO public
+USING (bucket_id = 'party-audio');
+
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   username TEXT UNIQUE NOT NULL,
@@ -19,6 +33,32 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 
 -- Index for fast user search
 CREATE INDEX IF NOT EXISTS idx_profiles_username ON public.profiles(username);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_username_lower ON public.profiles (LOWER(username));
+
+-- Automatically persist registration metadata even when email confirmation means
+-- Supabase does not return an active session immediately after sign-up.
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, username, display_name, avatar_url)
+  VALUES (
+    NEW.id,
+    COALESCE(NULLIF(NEW.raw_user_meta_data->>'username', ''), split_part(NEW.email, '@', 1)),
+    COALESCE(NULLIF(NEW.raw_user_meta_data->>'display_name', ''), split_part(NEW.email, '@', 1)),
+    NEW.raw_user_meta_data->>'avatar_url'
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    username = EXCLUDED.username,
+    display_name = EXCLUDED.display_name,
+    avatar_url = COALESCE(EXCLUDED.avatar_url, public.profiles.avatar_url);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- 2. Party Rooms Table
 CREATE TABLE IF NOT EXISTS public.rooms (

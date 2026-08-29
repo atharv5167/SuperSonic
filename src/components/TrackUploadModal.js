@@ -3,8 +3,11 @@
 import React, { useState, useRef } from 'react';
 import { Upload, Youtube, Music, X, Plus, Check, Loader2, Sparkles } from 'lucide-react';
 import { extractYouTubeId, fetchYouTubeMetadata } from '../lib/utils';
+import { supabase } from '../lib/supabase/client';
+import { useAuth } from '../context/AuthContext';
 
 export default function TrackUploadModal({ isOpen, onClose, onAddTrack }) {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('mp3'); // 'mp3' | 'youtube'
   const [isUploading, setIsUploading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -39,7 +42,7 @@ export default function TrackUploadModal({ isOpen, onClose, onAddTrack }) {
   };
 
   // Submit MP3 Track
-  const handleMp3Submit = (e) => {
+  const handleMp3Submit = async (e) => {
     e.preventDefault();
     if (!selectedFile) {
       setErrorMessage('Please choose an MP3 file to upload.');
@@ -49,15 +52,21 @@ export default function TrackUploadModal({ isOpen, onClose, onAddTrack }) {
     setIsUploading(true);
 
     try {
-      // Create local object URL for instant zero-latency playback
-      const objectUrl = URL.createObjectURL(selectedFile);
+      if (!supabase || !user?.id) throw new Error('You must be signed in to upload music.');
+      const storagePath = `${user.id}/${crypto.randomUUID()}-${selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      const { error: uploadError } = await supabase.storage.from('party-audio').upload(storagePath, selectedFile, {
+        contentType: selectedFile.type || 'audio/mpeg',
+        upsert: false
+      });
+      if (uploadError) throw uploadError;
+      const { data: publicUrl } = supabase.storage.from('party-audio').getPublicUrl(storagePath);
       
       const newTrack = {
         id: `track_mp3_${Date.now()}`,
         title: mp3Title.trim() || selectedFile.name,
         artist: mp3Artist.trim() || 'Host Upload',
         source_type: 'mp3',
-        source_url: objectUrl,
+        source_url: publicUrl.publicUrl,
         duration: 0,
         thumbnail_url: null
       };

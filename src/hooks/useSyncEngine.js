@@ -356,6 +356,14 @@ export function useSyncEngine({ roomId, userId, username, avatar, isHost }) {
     });
   }, [socket, isHost, roomId]);
 
+  const leaveRoom = useCallback(() => {
+    if (!socket) return;
+    socket.emit('room:leave', { roomId });
+    socket.disconnect();
+    setSocket(null);
+    setIsConnected(false);
+  }, [socket, roomId]);
+
   return {
     socket,
     isConnected,
@@ -383,6 +391,7 @@ export function useSyncEngine({ roomId, userId, username, avatar, isHost }) {
     warnUser,
     kickUser,
     toggleMuteUser,
-    endParty
+    endParty,
+    leaveRoom
   };
 }
