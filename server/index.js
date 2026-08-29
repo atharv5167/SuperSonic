@@ -488,13 +488,17 @@ io.on('connection', (socket) => {
   });
 
   // 8. Host Playlist Updates (Add, Remove, Reorder)
-  socket.on('playlist:update', ({ roomId, tracks, newCurrentIndex }) => {
+  socket.on('playlist:update', async ({ roomId, tracks, newCurrentIndex }, callback) => {
     const room = rooms.get(roomId);
-    if (!room || room.status !== 'active') return;
+    if (!room || room.status !== 'active') {
+      if (callback) callback({ success: false, error: 'Room is not active.' });
+      return;
+    }
 
     const participant = room.participants.get(socket.id);
     if (!participant || (!participant.isHost && room.hostId !== participant.userId)) {
       socket.emit('error:unauthorized', { message: 'Only the host can modify the playlist.' });
+      if (callback) callback({ success: false, error: 'Only the host can modify the playlist.' });
       return;
     }
 
@@ -502,7 +506,7 @@ io.on('connection', (socket) => {
     if (typeof newCurrentIndex === 'number') {
       room.currentTrackIndex = Math.min(Math.max(0, newCurrentIndex), Math.max(0, room.tracks.length - 1));
     }
-    persistRoom(room);
+    await persistRoom(room);
 
     console.log(`[Playlist Updated] Room: ${roomId}, Total Tracks: ${room.tracks.length}`);
 
@@ -512,6 +516,7 @@ io.on('connection', (socket) => {
       currentTrackIndex: room.currentTrackIndex,
       currentTrack: room.tracks[room.currentTrackIndex] || null
     });
+    if (callback) callback({ success: true, tracks: room.tracks, currentTrackIndex: room.currentTrackIndex });
   });
 
   // 9. Real-Time Chat & System Messaging

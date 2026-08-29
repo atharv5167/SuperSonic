@@ -84,22 +84,24 @@ export default function CreateRoomPage() {
       if (!session?.access_token) throw new Error('Your session expired. Please sign in again.');
       const socket = io(SOCKET_SERVER_URL, { transports: ['websocket', 'polling'], auth: { accessToken: session.access_token } });
       
-      socket.emit('room:init', {
-        roomId: newRoomCode,
-        hostId: activeUserId,
-        hostName: activeUserName,
-        roomName: roomName.trim(),
-        initialTracks: tracks
-      }, (res) => {
-        socket.disconnect();
-        // Redirect to live room
-        router.push(`/room/${newRoomCode}?host=true`);
-      });
+      const initializeRoom = () => socket.emit('room:init', {
+          roomId: newRoomCode,
+          hostId: activeUserId,
+          hostName: activeUserName,
+          roomName: roomName.trim(),
+          initialTracks: tracks
+        }, (res) => {
+          socket.disconnect();
+          if (!res?.success) {
+            setError(res?.error || 'Unable to create room. Please try again.');
+            setIsCreating(false);
+            return;
+          }
+          router.push(`/room/${newRoomCode}?host=true`);
+        });
+      if (socket.connected) initializeRoom();
+      else socket.once('connect', initializeRoom);
 
-      // Fallback redirect if server doesn't ack immediately
-      setTimeout(() => {
-        router.push(`/room/${newRoomCode}?host=true`);
-      }, 1000);
     } catch (err) {
       console.warn('Socket registration fallback:', err);
       router.push(`/room/${newRoomCode}?host=true`);

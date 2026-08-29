@@ -137,6 +137,10 @@ export function useSyncEngine({ roomId, userId, username, avatar, isHost }) {
       setConnectionError('Authentication failed. Please sign in again.');
     });
 
+    socketInstance.on('error:unauthorized', (data) => {
+      setConnectionError(data?.message || 'You are not authorized to perform that action.');
+    });
+
     socketInstance.on('disconnect', () => {
       setIsConnected(false);
     });
@@ -313,10 +317,18 @@ export function useSyncEngine({ roomId, userId, username, avatar, isHost }) {
   // Host Action: Update Playlist
   const updatePlaylist = useCallback((newTracks, newIndex) => {
     if (!socket || !isHost) return;
+    setRoomState(prev => prev ? {
+      ...prev,
+      tracks: newTracks,
+      currentTrackIndex: typeof newIndex === 'number' ? newIndex : prev.currentTrackIndex,
+      currentTrack: newTracks[typeof newIndex === 'number' ? newIndex : prev.currentTrackIndex] || null
+    } : prev);
     socket.emit('playlist:update', {
       roomId,
       tracks: newTracks,
       newCurrentIndex: newIndex
+    }, (response) => {
+      if (!response?.success) console.error('Playlist update failed:', response?.error);
     });
   }, [socket, isHost, roomId]);
 
