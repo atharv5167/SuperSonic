@@ -30,7 +30,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!isLoading && !user) router.replace('/auth');
-    const history = localStore.getPartyHistory();
+    const history = localStore.getPartyHistory(user?.id);
     setPartyHistory(history);
   }, [user, isLoading, router]);
 

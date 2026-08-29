@@ -76,7 +76,10 @@ export default function TrackUploadModal({ isOpen, onClose, onAddTrack }) {
       resetForm();
       onClose();
     } catch (err) {
-      setErrorMessage('Failed to process audio file: ' + err.message);
+      console.error('MP3 upload failed:', err);
+      setErrorMessage(/bucket/i.test(err.message || '')
+        ? 'Music storage is currently unavailable. Please try again later.'
+        : 'Unable to upload music. Please try again.');
       setIsUploading(false);
     }
   };

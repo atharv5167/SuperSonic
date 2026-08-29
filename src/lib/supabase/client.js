@@ -21,9 +21,10 @@ export const isSupabaseConfigured = () => isConfigured;
  * Local party history cache. Authentication always comes from Supabase.
  */
 export const localStore = {
-  getPartyHistory: () => {
+  getPartyHistory: (userId) => {
     if (typeof window === 'undefined') return [];
-    const stored = localStorage.getItem('supersonic_party_history');
+    if (!userId) return [];
+    const stored = localStorage.getItem(`supersonic_party_history_${userId}`);
     if (stored) {
       try { return JSON.parse(stored); } catch (e) { return []; }
     }
@@ -31,8 +32,10 @@ export const localStore = {
   },
   savePartyHistory: (party) => {
     if (typeof window === 'undefined') return;
-    const current = localStore.getPartyHistory();
+    if (!party?.userId) return;
+    const storageKey = `supersonic_party_history_${party.userId}`;
+    const current = localStore.getPartyHistory(party.userId);
     const updated = [party, ...current.filter(p => p.roomId !== party.roomId)].slice(0, 30);
-    localStorage.setItem('supersonic_party_history', JSON.stringify(updated));
+    localStorage.setItem(storageKey, JSON.stringify(updated));
   }
 };
