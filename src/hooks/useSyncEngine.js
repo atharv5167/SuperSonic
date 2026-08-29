@@ -331,7 +331,18 @@ export function useSyncEngine({ roomId, userId, username, avatar, isHost }) {
       tracks: newTracks,
       newCurrentIndex: newIndex
     }, (response) => {
-      if (!response?.success) console.error('Playlist update failed:', response?.error);
+      if (!response?.success) {
+        console.error('Playlist update failed:', response?.error);
+        return;
+      }
+      setRoomState(prev => ({
+        ...(prev || {}),
+        tracks: response.tracks || newTracks,
+        currentTrackIndex: response.currentTrackIndex ?? newIndex ?? prev?.currentTrackIndex ?? 0,
+        currentTrack: response.currentTrack || null
+      }));
+      if (response.currentTrack) setCurrentTrack(response.currentTrack);
+      if (typeof response.currentTrackIndex === 'number') setCurrentTrackIndex(response.currentTrackIndex);
     });
   }, [socket, isHost, roomId]);
 

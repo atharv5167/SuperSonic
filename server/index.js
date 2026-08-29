@@ -518,7 +518,12 @@ io.on('connection', (socket) => {
       currentTrackIndex: room.currentTrackIndex,
       currentTrack: room.tracks[room.currentTrackIndex] || null
     });
-    if (callback) callback({ success: true, tracks: room.tracks, currentTrackIndex: room.currentTrackIndex });
+    if (callback) callback({
+      success: true,
+      tracks: room.tracks,
+      currentTrackIndex: room.currentTrackIndex,
+      currentTrack: room.tracks[room.currentTrackIndex] || null
+    });
   });
 
   // 9. Real-Time Chat & System Messaging
