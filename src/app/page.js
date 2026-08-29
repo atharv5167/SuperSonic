@@ -102,7 +102,7 @@ export default function LandingPage() {
                 </Link>
 
                 <Link href="/auth" className="btn-secondary" style={{ padding: '16px 28px', fontSize: '1.05rem' }}>
-                  Sign In / Guest Pass
+                  Sign In / Create Account
                 </Link>
               </div>
 

@@ -4,18 +4,17 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
 import Navbar from '../../components/Navbar';
-import { LogIn, UserPlus, Sparkles, AlertCircle, ArrowRight, User } from 'lucide-react';
+import { LogIn, UserPlus, AlertCircle } from 'lucide-react';
 
 export default function AuthPage() {
   const router = useRouter();
-  const { signInWithEmail, signUpWithEmail, signInAsGuest, isConfigured } = useAuth();
+  const { signInWithEmail, signUpWithEmail } = useAuth();
   
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [displayName, setDisplayName] = useState('');
-  const [guestName, setGuestName] = useState('');
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -38,12 +37,6 @@ export default function AuthPage() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleGuestLogin = (e) => {
-    e.preventDefault();
-    signInAsGuest(guestName);
-    router.push('/dashboard');
   };
 
   return (
@@ -86,40 +79,6 @@ export default function AuthPage() {
             <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
               {isSignUp ? 'Join the synchronized music revolution' : 'Sign in to manage and host party rooms'}
             </p>
-          </div>
-
-          {/* Quick Guest Pass Option */}
-          <div style={{
-            background: 'rgba(139, 92, 246, 0.08)',
-            border: '1px dashed var(--border-glow)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '16px',
-            marginBottom: '24px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-              <Sparkles size={16} color="var(--primary-light)" />
-              <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--primary-light)' }}>
-                Instant Guest Pass (Zero Friction)
-              </span>
-            </div>
-
-            <form onSubmit={handleGuestLogin} style={{ display: 'flex', gap: '8px' }}>
-              <input
-                type="text"
-                className="input-field"
-                placeholder="Your Jammer Name (Optional)"
-                value={guestName}
-                onChange={(e) => setGuestName(e.target.value)}
-                style={{ padding: '8px 14px', fontSize: '0.85rem' }}
-              />
-              <button
-                type="submit"
-                className="btn-primary"
-                style={{ padding: '8px 16px', fontSize: '0.85rem', whiteSpace: 'nowrap' }}
-              >
-                Go Guest <ArrowRight size={14} />
-              </button>
-            </form>
           </div>
 
           {/* Tab Switcher */}

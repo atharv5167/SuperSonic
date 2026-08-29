@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS public.rooms (
   max_participants INTEGER DEFAULT 2000,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   ended_at TIMESTAMPTZ,
-  settings JSONB DEFAULT '{"allowChat": true, "allowGuestReactions": true}'::jsonb
+  settings JSONB DEFAULT '{"allowChat": true}'::jsonb
 );
 
 CREATE INDEX IF NOT EXISTS idx_rooms_room_code ON public.rooms(room_code);

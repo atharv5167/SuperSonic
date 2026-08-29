@@ -1,6 +1,7 @@
 const { io } = require('socket.io-client');
 
 const target = process.env.LOAD_TEST_URL || 'http://localhost:3001';
+const accessToken = process.env.LOAD_TEST_ACCESS_TOKEN;
 const users = Number(process.env.LOAD_TEST_USERS || 2000);
 const roomCount = Math.min(Number(process.env.LOAD_TEST_ROOMS || 200), users);
 const joinTimeoutMs = 15000;
@@ -19,7 +20,7 @@ function percentile(values, p) {
 function joinOne(index) {
   return new Promise((resolve, reject) => {
     const roomId = `LOAD-${String(index % roomCount).padStart(4, '0')}`;
-    const socket = io(target, { transports: ['websocket'], reconnection: false, timeout: joinTimeoutMs });
+    const socket = io(target, { transports: ['websocket'], auth: { accessToken }, reconnection: false, timeout: joinTimeoutMs });
     const started = Date.now();
     const isHost = index % roomCount === 0;
     sockets.push(socket);
@@ -53,6 +54,7 @@ function joinOne(index) {
 }
 
 async function main() {
+  if (!accessToken) throw new Error('Set LOAD_TEST_ACCESS_TOKEN to a valid Supabase access token.');
   console.log(`Load test: ${users} users across ${roomCount} rooms -> ${target}`);
   // Create all rooms/hosts first so participant joins do not race room creation.
   const hostResults = await Promise.all(Array.from({ length: roomCount }, (_, index) => joinOne(index)));

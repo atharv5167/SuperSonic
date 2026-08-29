@@ -2,11 +2,13 @@ const express = require('express');
 const http = require('http');
 const next = require('next');
 const { Server } = require('socket.io');
+const { createClient } = require('@supabase/supabase-js');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 
 const app = express();
+let supabaseServer = null;
 const nextApp = next({ dev: process.env.NODE_ENV !== 'production' });
 const nextRequestHandler = nextApp.getRequestHandler();
 app.use(cors());
@@ -71,6 +73,31 @@ const io = new Server(server, {
   transports: ['websocket', 'polling']
 });
 
+async function authenticateToken(token) {
+  if (!supabaseServer && process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    supabaseServer = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+  }
+  if (!supabaseServer || !token) return null;
+  const { data, error } = await supabaseServer.auth.getUser(token);
+  return error ? null : data.user;
+}
+
+async function requireApiUser(req, res, nextHandler) {
+  const token = req.headers.authorization?.replace(/^Bearer\s+/i, '');
+  const user = await authenticateToken(token);
+  if (!user) return res.status(401).json({ error: 'Authentication required.' });
+  req.user = user;
+  nextHandler();
+}
+
+io.use(async (socket, next) => {
+  const token = socket.handshake.auth?.accessToken;
+  const user = await authenticateToken(token);
+  if (!user) return next(new Error('Authentication required'));
+  socket.user = user;
+  next();
+});
+
 // REST API Endpoints for Diagnostics & Direct Actions
 app.get('/api/health', (req, res) => {
   res.json({
@@ -81,7 +108,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-app.get('/api/rooms/:roomId', (req, res) => {
+app.get('/api/rooms/:roomId', requireApiUser, (req, res) => {
   const room = rooms.get(req.params.roomId);
   if (!room) {
     return res.status(404).json({ error: 'Room not found' });
@@ -143,6 +170,7 @@ io.on('connection', (socket) => {
 
   // 2. Room Initialization / Registration (Host or Participant)
   socket.on('room:init', ({ roomId, hostId, hostName, roomName, initialTracks = [] }, callback) => {
+    hostId = socket.user.id;
     let room = rooms.get(roomId);
     if (!room) {
       room = createRoomState(roomId, hostId, hostName, roomName);
@@ -192,9 +220,9 @@ io.on('connection', (socket) => {
     currentRoomId = roomId;
     currentUser = {
       socketId: socket.id,
-      userId: userId || `guest_${socket.id.substring(0, 5)}`,
-      username: username || 'Guest Jammer',
-      avatar: avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${socket.id}`,
+      userId: socket.user.id,
+      username: socket.user.user_metadata?.display_name || socket.user.user_metadata?.username || username || socket.user.email,
+      avatar: socket.user.user_metadata?.avatar_url || avatar || null,
       isHost: isHost || room.hostId === userId,
       joinedAt: Date.now()
     };

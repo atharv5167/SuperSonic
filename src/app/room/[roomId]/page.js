@@ -32,21 +32,20 @@ export default function LiveRoomPage() {
   const roomId = params?.roomId ? String(params.roomId).toUpperCase() : '';
   const isHostQuery = searchParams.get('host') === 'true';
 
-  const { user, profile, signInAsGuest } = useAuth();
+  const { user, profile, isLoading } = useAuth();
   
   // UI Tabs for Mobile / Sidebar
   const [activeTab, setActiveTab] = useState('chat'); // 'chat' | 'playlist' | 'participants'
   const [isQrOpen, setIsQrOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  // Initialize guest user if not yet authenticated
   useEffect(() => {
-    if (!user) {
-      signInAsGuest();
-    }
-  }, [user, signInAsGuest]);
+    if (!isLoading && !user) router.replace(`/auth?next=/room/${roomId}`);
+  }, [user, isLoading, router, roomId]);
 
-  const activeUserId = user?.id || `user_${Math.random().toString(36).substring(2, 7)}`;
+  if (isLoading || !user) return null;
+
+  const activeUserId = user.id;
   const activeUserName = profile?.display_name || user?.display_name || 'Jammer';
   const activeAvatar = profile?.avatar_url || user?.avatar_url;
 

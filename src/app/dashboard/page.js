@@ -22,18 +22,17 @@ import { formatDuration } from '../../lib/utils';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, profile, signInAsGuest } = useAuth();
+  const { user, profile, isLoading } = useAuth();
   const [partyHistory, setPartyHistory] = useState([]);
   const [quickCode, setQuickCode] = useState('');
 
   useEffect(() => {
-    // If no user, automatically sign in as guest so they can explore
-    if (!user) {
-      signInAsGuest();
-    }
+    if (!isLoading && !user) router.replace('/auth');
     const history = localStore.getPartyHistory();
     setPartyHistory(history);
-  }, [user, signInAsGuest]);
+  }, [user, isLoading, router]);
+
+  if (isLoading || !user) return null;
 
   const handleJoin = (e) => {
     e.preventDefault();
@@ -77,15 +76,7 @@ export default function DashboardPage() {
                 <h1 style={{ fontSize: '1.8rem', color: '#fff' }}>
                   {profile?.display_name || user?.display_name || 'Jammer'}
                 </h1>
-                {user?.isGuest ? (
-                  <span className="badge" style={{ background: 'rgba(245, 158, 11, 0.15)', color: 'var(--accent-amber)' }}>
-                    Guest Mode
-                  </span>
-                ) : (
-                  <span className="badge badge-sync">
-                    Verified Host
-                  </span>
-                )}
+                <span className="badge badge-sync">Authenticated Account</span>
               </div>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginTop: '4px' }}>
                 Ready to host or join a synchronized music party?

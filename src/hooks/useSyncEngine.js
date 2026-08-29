@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
+import { supabase } from '../lib/supabase/client';
 
 const SOCKET_SERVER_URL = process.env.NEXT_PUBLIC_SOCKET_URL ||
   (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001');
@@ -78,11 +79,20 @@ export function useSyncEngine({ roomId, userId, username, avatar, isHost }) {
   useEffect(() => {
     if (!roomId) return;
 
-    const socketInstance = io(SOCKET_SERVER_URL, {
+    let socketInstance;
+    let cancelled = false;
+    const connect = async () => {
+      const { data: { session } } = await supabase?.auth.getSession() || { data: { session: null } };
+      if (cancelled || !session?.access_token) {
+        setConnectionError('Please sign in to join this room.');
+        return;
+      }
+      socketInstance = io(SOCKET_SERVER_URL, {
       transports: ['websocket', 'polling'],
+      auth: { accessToken: session.access_token },
       reconnectionAttempts: 10,
       reconnectionDelay: 1000
-    });
+      });
 
     socketInstance.on('connect', () => {
       console.log(`[Socket Connected] ID: ${socketInstance.id}`);
@@ -121,6 +131,10 @@ export function useSyncEngine({ roomId, userId, username, avatar, isHost }) {
           socketInstance.disconnect();
         }
       });
+    });
+
+    socketInstance.on('connect_error', () => {
+      setConnectionError('Authentication failed. Please sign in again.');
     });
 
     socketInstance.on('disconnect', () => {
@@ -230,6 +244,8 @@ export function useSyncEngine({ roomId, userId, username, avatar, isHost }) {
     });
 
     setSocket(socketInstance);
+    };
+    connect();
 
     // Periodic Re-calibration every 60s
     const recalibrateInterval = setInterval(() => {
@@ -238,7 +254,8 @@ export function useSyncEngine({ roomId, userId, username, avatar, isHost }) {
 
     return () => {
       clearInterval(recalibrateInterval);
-      socketInstance.disconnect();
+      cancelled = true;
+      socketInstance?.disconnect();
     };
   }, [roomId, userId, username, avatar, isHost, calibrateClock]);
 

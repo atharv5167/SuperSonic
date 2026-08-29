@@ -18,25 +18,9 @@ export const supabase = isConfigured
 export const isSupabaseConfigured = () => isConfigured;
 
 /**
- * Fallback Local Profile / Room Store (Active when Supabase keys are not yet configured)
+ * Local party history cache. Authentication always comes from Supabase.
  */
 export const localStore = {
-  getUser: () => {
-    if (typeof window === 'undefined') return null;
-    const stored = localStorage.getItem('supersonic_guest_user');
-    if (stored) {
-      try { return JSON.parse(stored); } catch (e) { return null; }
-    }
-    return null;
-  },
-  setUser: (user) => {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem('supersonic_guest_user', JSON.stringify(user));
-  },
-  clearUser: () => {
-    if (typeof window === 'undefined') return;
-    localStorage.removeItem('supersonic_guest_user');
-  },
   getPartyHistory: () => {
     if (typeof window === 'undefined') return [];
     const stored = localStorage.getItem('supersonic_party_history');

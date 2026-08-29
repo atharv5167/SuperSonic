@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase, isSupabaseConfigured, localStore } from '../lib/supabase/client';
+import { supabase, isSupabaseConfigured } from '../lib/supabase/client';
 import { getAvatarUrl } from '../lib/utils';
 
 const AuthContext = createContext({
@@ -11,7 +11,6 @@ const AuthContext = createContext({
   isConfigured: false,
   signInWithEmail: async () => {},
   signUpWithEmail: async () => {},
-  signInAsGuest: () => {},
   signOut: async () => {},
   updateProfile: async () => {}
 });
@@ -30,7 +29,6 @@ export function AuthProvider({ children }) {
             setUser(session.user);
             await fetchSupabaseProfile(session.user.id);
           } else {
-            checkLocalGuestUser();
           }
 
           const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
@@ -40,17 +38,14 @@ export function AuthProvider({ children }) {
             } else {
               setUser(null);
               setProfile(null);
-              checkLocalGuestUser();
             }
           });
 
           return () => subscription.unsubscribe();
         } else {
-          checkLocalGuestUser();
         }
       } catch (err) {
         console.error('Auth initialization error:', err);
-        checkLocalGuestUser();
       } finally {
         setIsLoading(false);
       }
@@ -58,14 +53,6 @@ export function AuthProvider({ children }) {
 
     initAuth();
   }, []);
-
-  const checkLocalGuestUser = () => {
-    const localUser = localStore.getUser();
-    if (localUser) {
-      setUser(localUser);
-      setProfile(localUser);
-    }
-  };
 
   const fetchSupabaseProfile = async (userId) => {
     try {
@@ -93,7 +80,7 @@ export function AuthProvider({ children }) {
 
   const signInWithEmail = async (email, password) => {
     if (!isSupabaseConfigured() || !supabase) {
-      throw new Error('Supabase is not configured with live API keys yet. Please use Guest Mode or provide Supabase keys in .env.local.');
+      throw new Error('Supabase is not configured. Please configure Supabase before signing in.');
     }
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
@@ -102,7 +89,7 @@ export function AuthProvider({ children }) {
 
   const signUpWithEmail = async (email, password, username, displayName) => {
     if (!isSupabaseConfigured() || !supabase) {
-      throw new Error('Supabase is not configured with live API keys yet. Please use Guest Mode or provide Supabase keys in .env.local.');
+      throw new Error('Supabase is not configured. Please configure Supabase before creating an account.');
     }
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -118,45 +105,22 @@ export function AuthProvider({ children }) {
     return data;
   };
 
-  const signInAsGuest = (customName) => {
-    const randomId = 'guest_' + Math.random().toString(36).substring(2, 9);
-    const guestName = customName?.trim() || `Jammer #${Math.floor(1000 + Math.random() * 9000)}`;
-    const guestUser = {
-      id: randomId,
-      username: guestName.toLowerCase().replace(/\s+/g, '_'),
-      display_name: guestName,
-      avatar_url: getAvatarUrl(randomId),
-      isGuest: true
-    };
-
-    localStore.setUser(guestUser);
-    setUser(guestUser);
-    setProfile(guestUser);
-    return guestUser;
-  };
-
   const signOut = async () => {
     if (isSupabaseConfigured() && supabase) {
       await supabase.auth.signOut();
     }
-    localStore.clearUser();
     setUser(null);
     setProfile(null);
   };
 
   const updateProfile = async (updates) => {
-    if (isSupabaseConfigured() && supabase && user && !user.isGuest) {
+    if (isSupabaseConfigured() && supabase && user) {
       const { error } = await supabase
         .from('profiles')
         .update(updates)
         .eq('id', user.id);
       if (error) throw error;
       setProfile(prev => ({ ...prev, ...updates }));
-    } else if (user) {
-      const updated = { ...user, ...updates };
-      localStore.setUser(updated);
-      setUser(updated);
-      setProfile(updated);
     }
   };
 
@@ -168,7 +132,6 @@ export function AuthProvider({ children }) {
       isConfigured: isSupabaseConfigured(),
       signInWithEmail,
       signUpWithEmail,
-      signInAsGuest,
       signOut,
       updateProfile
     }}>

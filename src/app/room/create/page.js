@@ -26,7 +26,7 @@ const SOCKET_SERVER_URL = process.env.NEXT_PUBLIC_SOCKET_URL ||
 
 export default function CreateRoomPage() {
   const router = useRouter();
-  const { user, profile, signInAsGuest } = useAuth();
+  const { user, profile, isLoading } = useAuth();
 
   const [roomName, setRoomName] = useState('Cyber Jam Session');
   const [tracks, setTracks] = useState([]);
@@ -35,11 +35,10 @@ export default function CreateRoomPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    // If user is not logged in, auto-generate guest account
-    if (!user) {
-      signInAsGuest();
-    }
-  }, [user, signInAsGuest]);
+    if (!isLoading && !user) router.replace('/auth');
+  }, [user, isLoading, router]);
+
+  if (isLoading || !user) return null;
 
   // Handle Adding Track from Modal
   const handleAddTrack = (track) => {
