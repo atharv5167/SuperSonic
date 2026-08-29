@@ -31,6 +31,12 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE public.profiles
+  DROP CONSTRAINT IF EXISTS profiles_username_format;
+ALTER TABLE public.profiles
+  ADD CONSTRAINT profiles_username_format
+  CHECK (username ~ '^[a-z0-9_]+$');
+
 -- Index for fast user search
 CREATE INDEX IF NOT EXISTS idx_profiles_username ON public.profiles(username);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_username_lower ON public.profiles (LOWER(username));

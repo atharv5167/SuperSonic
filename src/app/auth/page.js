@@ -19,20 +19,27 @@ export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [verificationMessage, setVerificationMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   const handleEmailAuth = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccessMessage('');
     setIsLoading(true);
 
     try {
       if (isSignUp) {
+        if (!/^[a-z0-9_]+$/.test(username)) {
+          setError('Username can only contain lowercase letters, numbers, and _.');
+          return;
+        }
         const result = await signUpWithEmail(email, password, username, displayName);
         if (!result?.session) {
           setVerificationMessage(`Account created. Please verify your email address. A verification link has been sent to ${email}. Open it and click the link before signing in.`);
           setIsSignUp(false);
           return;
         }
+        setSuccessMessage('Account created successfully. You are now signed in.');
       } else {
         await signInWithEmail(email, password);
       }
@@ -156,6 +163,12 @@ export default function AuthPage() {
           {verificationMessage && (
             <div style={{ background: 'rgba(6, 182, 212, 0.12)', border: '1px solid rgba(6, 182, 212, 0.4)', color: '#a5f3fc', padding: '12px 14px', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', marginBottom: '16px' }}>
               {verificationMessage}
+            </div>
+          )}
+
+          {successMessage && (
+            <div style={{ background: 'rgba(34, 197, 94, 0.12)', border: '1px solid rgba(34, 197, 94, 0.4)', color: '#bbf7d0', padding: '12px 14px', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', marginBottom: '16px' }}>
+              {successMessage}
             </div>
           )}
 

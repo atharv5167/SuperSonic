@@ -128,6 +128,21 @@ async function persistHistory(room, summary) {
   if (error) console.error('[History Persistence Error]', error.message);
 }
 
+async function restoreRoom(roomId) {
+  if (!supabaseServer) return null;
+  const { data, error } = await supabaseServer.from('rooms')
+    .select('id, room_code, name, host_id, status, created_at, profiles:host_id(username, display_name), room_tracks(*)')
+    .eq('room_code', roomId)
+    .maybeSingle();
+  if (error || !data) return null;
+  const room = createRoomState(roomId, data.host_id, data.profiles?.display_name || data.profiles?.username || 'Host', data.name);
+  room.dbId = data.id;
+  room.status = data.status;
+  room.createdAt = new Date(data.created_at).getTime();
+  room.tracks = (data.room_tracks || []).sort((a, b) => a.order_index - b.order_index);
+  return room;
+}
+
 async function requireApiUser(req, res, nextHandler) {
   const token = req.headers.authorization?.replace(/^Bearer\s+/i, '');
   const user = await authenticateToken(token);
@@ -217,6 +232,7 @@ io.on('connection', (socket) => {
   // 2. Room Initialization / Registration (Host or Participant)
   socket.on('room:init', async ({ roomId, hostId, hostName, roomName, initialTracks = [] }, callback) => {
     hostId = socket.user.id;
+    hostName = socket.user.user_metadata?.display_name || socket.user.user_metadata?.username || socket.user.email;
     let room = rooms.get(roomId);
     if (!room) {
       room = createRoomState(roomId, hostId, hostName, roomName);
@@ -226,8 +242,15 @@ io.on('connection', (socket) => {
       rooms.set(roomId, room);
       console.log(`[Room Created] ID: ${roomId}, Host: ${hostName} (${hostId})`);
     } else if (room.status === 'ended') {
+      if (room.hostId !== hostId) {
+        if (callback) callback({ success: false, error: 'Only the room host can reopen this room.' });
+        return;
+      }
       // Re-activate if host is re-entering
       room.status = 'active';
+    } else if (room.hostId !== hostId) {
+      if (callback) callback({ success: false, error: 'Only the room host can initialize this room.' });
+      return;
     }
 
     await persistRoom(room);
@@ -236,18 +259,16 @@ io.on('connection', (socket) => {
   });
 
   // 3. Join Room
-  socket.on('room:join', ({ roomId, userId, username, avatar, isHost }, callback) => {
+  socket.on('room:join', async ({ roomId }, callback) => {
     let room = rooms.get(roomId);
 
-    // If room doesn't exist yet and user is host, create it automatically
+    if (!room) room = await restoreRoom(roomId);
+    if (room) rooms.set(roomId, room);
+
+    // Room creation is performed by room:init; joining never creates rooms.
     if (!room) {
-      if (isHost) {
-        room = createRoomState(roomId, userId, username);
-        rooms.set(roomId, room);
-      } else {
-        if (callback) callback({ success: false, error: 'Room not found or party has ended.' });
-        return;
-      }
+      if (callback) callback({ success: false, error: 'Room not found or party has ended.' });
+      return;
     }
 
     if (room.status === 'ended') {
@@ -271,7 +292,7 @@ io.on('connection', (socket) => {
       userId: socket.user.id,
       username: socket.user.user_metadata?.display_name || socket.user.user_metadata?.username || username || socket.user.email,
       avatar: socket.user.user_metadata?.avatar_url || avatar || null,
-      isHost: isHost || room.hostId === userId,
+      isHost: socket.user.id === room.hostId,
       joinedAt: Date.now()
     };
 
