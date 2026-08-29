@@ -264,6 +264,8 @@ Render runs the entire application as one web service. The custom entrypoint sta
 3. Deploy with the blueprint's `npm ci && npm run build` build command and `npm start` start command.
 4. Verify `/api/health` and then test a host plus several participants over the public HTTPS URL.
 
+Each room is limited to 50 connected users by default. Configure this with `MAX_ROOM_USERS` in Render; rejected joins receive the `ROOM_FULL` code and the UI displays “This room is full.” This is a per-room guard and does not represent total server capacity.
+
 The current room store is intentionally process-local. Start with one Render instance and load-test it before the event. The included harness defaults to 2,000 users across 200 rooms:
 
 ```bash

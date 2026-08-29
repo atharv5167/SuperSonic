@@ -9,6 +9,7 @@ const SOCKET_SERVER_URL = process.env.NEXT_PUBLIC_SOCKET_URL ||
 export function useSyncEngine({ roomId, userId, username, avatar, isHost }) {
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [connectionError, setConnectionError] = useState(null);
   const [clockOffset, setClockOffset] = useState(0); // Offset in milliseconds between client & server
   const [rtt, setRtt] = useState(0); // Round-trip time
   
@@ -99,6 +100,7 @@ export function useSyncEngine({ roomId, userId, username, avatar, isHost }) {
         isHost
       }, (response) => {
         if (response?.success) {
+          setConnectionError(null);
           const room = response.room;
           setRoomState(room);
           setCurrentTrack(room.currentTrack);
@@ -115,6 +117,8 @@ export function useSyncEngine({ roomId, userId, username, avatar, isHost }) {
           };
         } else if (response?.error) {
           console.warn('Join room error:', response.error);
+          setConnectionError(response.error);
+          socketInstance.disconnect();
         }
       });
     });
@@ -338,6 +342,7 @@ export function useSyncEngine({ roomId, userId, username, avatar, isHost }) {
   return {
     socket,
     isConnected,
+    connectionError,
     clockOffset,
     rtt,
     roomState,

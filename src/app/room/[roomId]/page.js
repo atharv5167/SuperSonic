@@ -53,6 +53,7 @@ export default function LiveRoomPage() {
   // Real-Time Sub-100ms Sync Engine Hook
   const {
     isConnected,
+    connectionError,
     clockOffset,
     roomState,
     currentTrack,
@@ -124,6 +125,12 @@ export default function LiveRoomPage() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)' }}>
       <Navbar currentRoomCode={roomId} isHost={isHost} />
+
+      {connectionError && (
+        <div style={{ margin: '20px auto 0', maxWidth: '720px', width: 'calc(100% - 40px)', padding: '14px 18px', borderRadius: '10px', background: 'rgba(255, 87, 87, 0.14)', border: '1px solid rgba(255, 87, 87, 0.5)', color: '#ffb0b0', textAlign: 'center' }}>
+          {connectionError}
+        </div>
+      )}
 
       {/* Moderation Warning Toast */}
       {moderationAlert && (

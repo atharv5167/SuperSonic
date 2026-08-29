@@ -21,6 +21,7 @@ if (!fs.existsSync(uploadsDir)) {
 // In-Memory High-Performance Room Store
 // Structured for ultra-low latency lookups (< 1ms in-memory access)
 const rooms = new Map();
+const MAX_ROOM_USERS = Math.max(1, Number.parseInt(process.env.MAX_ROOM_USERS || '50', 10) || 50);
 
 // Helper to calculate exact current playback position
 function getExactPlaybackPosition(playbackState) {
@@ -175,6 +176,16 @@ io.on('connection', (socket) => {
 
     if (room.status === 'ended') {
       if (callback) callback({ success: false, error: 'This party room has ended.' });
+      return;
+    }
+
+    if (!room.participants.has(socket.id) && room.participants.size >= MAX_ROOM_USERS) {
+      if (callback) callback({
+        success: false,
+        code: 'ROOM_FULL',
+        error: 'This room is full.',
+        maxUsers: MAX_ROOM_USERS
+      });
       return;
     }
 
