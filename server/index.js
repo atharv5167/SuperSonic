@@ -1,11 +1,14 @@
 const express = require('express');
 const http = require('http');
+const next = require('next');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 
 const app = express();
+const nextApp = next({ dev: process.env.NODE_ENV !== 'production' });
+const nextRequestHandler = nextApp.getRequestHandler();
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
@@ -98,6 +101,9 @@ app.get('/api/rooms/:roomId', (req, res) => {
     serverTimestamp: Date.now()
   });
 });
+
+// Production uses one public process for Next.js, Express APIs, and Socket.IO.
+app.use((req, res) => nextRequestHandler(req, res));
 
 // Periodic Authority Broadcast (Every 3 seconds)
 // Keeps all connected clients tightly aligned and handles any network jitter
@@ -590,10 +596,13 @@ function sanitizeRoomState(room) {
 }
 
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
+nextApp.prepare().then(() => server.listen(PORT, '0.0.0.0', () => {
   console.log(`====================================================`);
   console.log(`⚡ SuperSonic Real-Time Sync Server running on port ${PORT}`);
   console.log(`🕒 Sub-100ms NTP Drift Compensation Engine Active`);
   console.log(`📡 WebSocket Transports: WebSocket, Polling`);
   console.log(`====================================================`);
+})).catch((error) => {
+  console.error('Failed to prepare Next.js:', error);
+  process.exit(1);
 });

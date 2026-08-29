@@ -7,7 +7,8 @@
     "dev:server": "node server/index.js",
     "dev:all": "node scripts/start-all.js",
     "build": "next build",
-    "start": "next start -p 3000",
+    "start": "node server/index.js",
+    "load:test": "node scripts/load-test.js",
     "server": "node server/index.js"
   },
   "dependencies": {

@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
 
-const SOCKET_SERVER_URL = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001';
+const SOCKET_SERVER_URL = process.env.NEXT_PUBLIC_SOCKET_URL ||
+  (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3001');
 
 export function useSyncEngine({ roomId, userId, username, avatar, isHost }) {
   const [socket, setSocket] = useState(null);

@@ -254,3 +254,20 @@ Open `http://localhost:3000` in your browser.
 2. Add an MP3 file or YouTube link and click **"Create & Launch Room"**.
 3. Copy the room link and open it in a second browser window (or Incognito / Phone on same Wi-Fi).
 4. Hit **Play** on the host window: observe instantaneous, synchronized playback on both windows with < 100ms drift!
+
+### Render Deployment
+
+Render runs the entire application as one web service. The custom entrypoint starts Next.js, Express, and Socket.IO on Render's `PORT`; the browser connects to Socket.IO through the same origin when `NEXT_PUBLIC_SOCKET_URL` is unset.
+
+1. Create a Render Blueprint from `render.yaml`, using the Singapore region for Indian users.
+2. Add the Supabase environment variables in Render's Environment tab. Never commit service-role keys.
+3. Deploy with the blueprint's `npm ci && npm run build` build command and `npm start` start command.
+4. Verify `/api/health` and then test a host plus several participants over the public HTTPS URL.
+
+The current room store is intentionally process-local. Start with one Render instance and load-test it before the event. The included harness defaults to 2,000 users across 200 rooms:
+
+```bash
+LOAD_TEST_URL=https://your-render-service.onrender.com npm run load:test
+```
+
+Override `LOAD_TEST_USERS` and `LOAD_TEST_ROOMS` to model different room sizes. Record Render CPU, memory, network, connection count, join p95, and playback-event p95. If one instance approaches its limits or a multi-instance deployment is required, add the Socket.IO Redis adapter and move room/session state to shared Redis before enabling horizontal scaling.
