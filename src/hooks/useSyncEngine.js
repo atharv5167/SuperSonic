@@ -77,7 +77,10 @@ export function useSyncEngine({ roomId, userId, username, avatar, isHost }) {
 
   // 2. Initialize Socket Connection & Event Listeners
   useEffect(() => {
-    if (!roomId) return;
+    // Do not establish a room socket until the authenticated identity is
+    // available; otherwise the first connection can be classified as a
+    // participant and lose host authorization.
+    if (!roomId || !userId) return;
 
     let socketInstance;
     let cancelled = false;
