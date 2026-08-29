@@ -498,7 +498,7 @@ io.on('connection', (socket) => {
     }
 
     const participant = room.participants.get(socket.id);
-    if (!participant || (!participant.isHost && room.hostId !== participant.userId)) {
+    if (!socket.user || socket.user.id !== room.hostId) {
       socket.emit('error:unauthorized', { message: 'Only the host can modify the playlist.' });
       if (callback) callback({ success: false, error: 'Only the host can modify the playlist.' });
       return;
