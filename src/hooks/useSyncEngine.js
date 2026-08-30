@@ -39,6 +39,18 @@ export function useSyncEngine({ roomId, userId, username, avatar, isHost }) {
 
   const clockOffsetRef = useRef(0);
   clockOffsetRef.current = clockOffset;
+  const roomStateRef = useRef(null);
+  roomStateRef.current = roomState;
+
+  const keepActiveAudioUrl = useCallback((track) => {
+    if (!track || track.source_type !== 'mp3' || !track.storage_path) return track;
+    const knownTrack = roomStateRef.current?.tracks?.find(
+      (item) => item.storage_path === track.storage_path
+    );
+    return knownTrack?.source_url
+      ? { ...track, source_url: knownTrack.source_url }
+      : track;
+  }, []);
 
   // 1. High-Precision NTP Clock Calibration (Calculates median clock offset)
   const calibrateClock = useCallback((socketInstance) => {
@@ -168,7 +180,7 @@ export function useSyncEngine({ roomId, userId, username, avatar, isHost }) {
       console.log('[Sync Event] Playback state changed:', data);
       setIsPlaying(data.isPlaying);
       setCurrentTrackIndex(data.currentTrackIndex);
-      if (data.currentTrack) setCurrentTrack(data.currentTrack);
+      if (data.currentTrack) setCurrentTrack(keepActiveAudioUrl(data.currentTrack));
 
       playbackRef.current = {
         isPlaying: data.isPlaying,
@@ -193,7 +205,7 @@ export function useSyncEngine({ roomId, userId, username, avatar, isHost }) {
     socketInstance.on('playback:track_changed', (data) => {
       console.log('[Sync Event] Track changed to:', data.currentTrack?.title);
       setCurrentTrackIndex(data.currentTrackIndex);
-      setCurrentTrack(data.currentTrack);
+      setCurrentTrack(keepActiveAudioUrl(data.currentTrack));
       setIsPlaying(data.isPlaying);
 
       playbackRef.current = {
@@ -369,10 +381,10 @@ export function useSyncEngine({ roomId, userId, username, avatar, isHost }) {
         currentTrackIndex: response.currentTrackIndex ?? newIndex ?? prev?.currentTrackIndex ?? 0,
         currentTrack: response.currentTrack || null
       }));
-      if (response.currentTrack) setCurrentTrack(response.currentTrack);
+      if (response.currentTrack) setCurrentTrack(keepActiveAudioUrl(response.currentTrack));
       if (typeof response.currentTrackIndex === 'number') setCurrentTrackIndex(response.currentTrackIndex);
     });
-  }, [socket, isHost, roomId]);
+  }, [socket, isHost, roomId, keepActiveAudioUrl]);
 
   // Action: Send Chat
   const sendChatMessage = useCallback((content) => {

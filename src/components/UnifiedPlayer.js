@@ -41,6 +41,7 @@ export default function UnifiedPlayer({
   const ytContainerRef = useRef(null);
   const isDraggingRef = useRef(false);
   const pendingPlayRef = useRef(false);
+  const audioRetryRef = useRef(false);
   const [ytReady, setYtReady] = useState(false);
 
   const isYouTube = currentTrack?.source_type === 'youtube' || Boolean(extractYouTubeId(currentTrack?.source_url));
@@ -151,15 +152,17 @@ export default function UnifiedPlayer({
       // normally provides one, while this client fallback also handles an
       // expired URL after a reconnect.
       let sourceUrl = currentTrack?.source_url;
-      if (!sourceUrl && currentTrack?.storage_path && supabase) {
-        const { data } = await supabase.storage
+      if (currentTrack?.storage_path && supabase) {
+        const { data, error } = await supabase.storage
           .from('party-audio')
           .createSignedUrl(currentTrack.storage_path, 60 * 60);
+        if (error) console.warn('Could not sign MP3 URL:', error.message);
         sourceUrl = data?.signedUrl || sourceUrl;
       }
       if (cancelled || !sourceUrl) return;
 
       if (audio.src !== sourceUrl) {
+        audioRetryRef.current = false;
         audio.src = sourceUrl;
         audio.load();
       }
@@ -284,6 +287,21 @@ export default function UnifiedPlayer({
         ref={audioRef}
         crossOrigin="anonymous"
         onLoadedMetadata={(e) => setDuration(e.target.duration || 0)}
+        onError={async (e) => {
+          const track = currentTrack;
+          if (audioRetryRef.current || !track?.storage_path || !supabase) return;
+          audioRetryRef.current = true;
+          const { data, error } = await supabase.storage
+            .from('party-audio')
+            .createSignedUrl(track.storage_path, 60 * 60);
+          if (error || !data?.signedUrl) {
+            console.error('MP3 could not be loaded from Supabase Storage:', error?.message || 'No signed URL returned');
+            return;
+          }
+          e.currentTarget.src = data.signedUrl;
+          e.currentTarget.load();
+          if (isPlaying) e.currentTarget.play().catch(() => {});
+        }}
         onEnded={() => {
           if (isHost && onNext) onNext();
         }}
