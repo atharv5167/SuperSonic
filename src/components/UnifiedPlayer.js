@@ -40,6 +40,7 @@ export default function UnifiedPlayer({
   const ytPlayerRef = useRef(null);
   const ytContainerRef = useRef(null);
   const isDraggingRef = useRef(false);
+  const pendingPlayRef = useRef(false);
   const [ytReady, setYtReady] = useState(false);
 
   const isYouTube = currentTrack?.source_type === 'youtube' || Boolean(extractYouTubeId(currentTrack?.source_url));
@@ -169,13 +170,30 @@ export default function UnifiedPlayer({
       }
 
       if (isPlaying) {
-        audio.play().catch(err => console.log('Audio autoplay policy wait:', err));
+        pendingPlayRef.current = true;
+        const playWhenReady = () => {
+          if (!pendingPlayRef.current || cancelled) return;
+          audio.play().then(() => {
+            pendingPlayRef.current = false;
+          }).catch(err => {
+            console.warn('Audio playback wait:', err.name, err.message);
+          });
+        };
+        if (audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
+          playWhenReady();
+        } else {
+          audio.addEventListener('canplay', playWhenReady, { once: true });
+        }
       } else {
+        pendingPlayRef.current = false;
         audio.pause();
       }
     };
     applyAudioSource();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      pendingPlayRef.current = false;
+    };
   }, [currentTrack, isPlaying, isYouTube, getSynchronizedTime]);
 
   // 4. Sub-100ms Adaptive Steering Loop (Checks drift every 500ms)
@@ -264,6 +282,7 @@ export default function UnifiedPlayer({
       {/* Hidden HTML5 Audio Element */}
       <audio
         ref={audioRef}
+        crossOrigin="anonymous"
         onLoadedMetadata={(e) => setDuration(e.target.duration || 0)}
         onEnded={() => {
           if (isHost && onNext) onNext();
@@ -434,7 +453,21 @@ export default function UnifiedPlayer({
 
               <button
                 className="btn-primary"
-                onClick={() => isPlaying ? onPause(currentTime) : onPlay(currentTime)}
+                onClick={() => {
+                  if (isPlaying) {
+                    onPause(currentTime);
+                    return;
+                  }
+                  // Use the host's click gesture to unlock local MP3 audio;
+                  // the authoritative state change still travels through
+                  // Socket.IO immediately afterward.
+                  if (!isYouTube && audioRef.current) {
+                    audioRef.current.play().catch((error) => {
+                      console.warn('Audio requires a user gesture:', error.name, error.message);
+                    });
+                  }
+                  onPlay(currentTime);
+                }}
                 style={{
                   width: '54px',
                   height: '54px',
