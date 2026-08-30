@@ -365,6 +365,7 @@ io.on('connection', (socket) => {
       participants: Array.from(room.participants.values())
     };
     roomPayload.tracks = await getActiveTrackUrls(roomPayload.tracks || []);
+    roomPayload.currentTrack = roomPayload.tracks[room.currentTrackIndex] || null;
 
     if (callback) {
       callback({

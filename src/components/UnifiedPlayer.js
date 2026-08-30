@@ -14,6 +14,7 @@ import {
   Music,
 } from 'lucide-react';
 import { formatDuration, extractYouTubeId } from '../lib/utils';
+import { supabase } from '../lib/supabase/client';
 import AudioVisualizer from './AudioVisualizer';
 
 export default function UnifiedPlayer({
@@ -143,21 +144,38 @@ export default function UnifiedPlayer({
     const audio = audioRef.current;
     if (!audio || isYouTube) return;
 
-    if (currentTrack?.source_url && audio.src !== currentTrack.source_url) {
-      audio.src = currentTrack.source_url;
-      audio.load();
-    }
+    let cancelled = false;
+    const applyAudioSource = async () => {
+      // Resolve a fresh URL for temporary private session files. The server
+      // normally provides one, while this client fallback also handles an
+      // expired URL after a reconnect.
+      let sourceUrl = currentTrack?.source_url;
+      if (!sourceUrl && currentTrack?.storage_path && supabase) {
+        const { data } = await supabase.storage
+          .from('party-audio')
+          .createSignedUrl(currentTrack.storage_path, 60 * 60);
+        sourceUrl = data?.signedUrl || sourceUrl;
+      }
+      if (cancelled || !sourceUrl) return;
 
-    const expectedTime = getSynchronizedTime();
-    if (Math.abs(audio.currentTime - expectedTime) > 0.15) {
-      audio.currentTime = expectedTime;
-    }
+      if (audio.src !== sourceUrl) {
+        audio.src = sourceUrl;
+        audio.load();
+      }
 
-    if (isPlaying) {
-      audio.play().catch(err => console.log('Audio autoplay policy wait:', err));
-    } else {
-      audio.pause();
-    }
+      const expectedTime = getSynchronizedTime();
+      if (Math.abs(audio.currentTime - expectedTime) > 0.15) {
+        audio.currentTime = expectedTime;
+      }
+
+      if (isPlaying) {
+        audio.play().catch(err => console.log('Audio autoplay policy wait:', err));
+      } else {
+        audio.pause();
+      }
+    };
+    applyAudioSource();
+    return () => { cancelled = true; };
   }, [currentTrack, isPlaying, isYouTube, getSynchronizedTime]);
 
   // 4. Sub-100ms Adaptive Steering Loop (Checks drift every 500ms)
