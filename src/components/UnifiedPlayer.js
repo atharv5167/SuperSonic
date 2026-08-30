@@ -261,7 +261,11 @@ export default function UnifiedPlayer({
             background: '#000',
             aspectRatio: '16/9',
             boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-            border: '1px solid var(--border-subtle)'
+            border: '1px solid var(--border-subtle)',
+            // The YouTube iframe is a renderer only. Prevent clicks and
+            // keyboard input from reaching cross-origin native controls.
+            pointerEvents: 'none',
+            userSelect: 'none'
           }}>
             <div ref={ytContainerRef} style={{ width: '100%', height: '100%' }} />
           </div>
