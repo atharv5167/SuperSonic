@@ -11,6 +11,7 @@ export function useSyncEngine({ roomId, userId, username, avatar, isHost }) {
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState(null);
+  const [actionError, setActionError] = useState(null);
   const [clockOffset, setClockOffset] = useState(0); // Offset in milliseconds between client & server
   const [rtt, setRtt] = useState(0); // Round-trip time
   
@@ -328,10 +329,19 @@ export function useSyncEngine({ roomId, userId, username, avatar, isHost }) {
   // Host Action: Change Track
   const changeTrack = useCallback((index) => {
     if (!socket || !isHost) return;
+    if (!Number.isInteger(index) || index < 0) {
+      setActionError('That track is not available.');
+      return;
+    }
+    setActionError(null);
     socket.emit('playback:change_track', {
       roomId,
       trackIndex: index,
       autoPlay: true
+    }, (response) => {
+      if (!response?.success) {
+        setActionError(response?.error || 'Unable to change track. Please try again.');
+      }
     });
   }, [socket, isHost, roomId]);
 
@@ -416,6 +426,8 @@ export function useSyncEngine({ roomId, userId, username, avatar, isHost }) {
     socket,
     isConnected,
     connectionError,
+    actionError,
+    clearActionError: () => setActionError(null),
     clockOffset,
     rtt,
     roomState,

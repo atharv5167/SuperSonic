@@ -456,17 +456,29 @@ io.on('connection', (socket) => {
   });
 
   // 7. Host Playback Control: CHANGE TRACK
-  socket.on('playback:change_track', ({ roomId, trackIndex, autoPlay = true }) => {
+  socket.on('playback:change_track', ({ roomId, trackIndex, autoPlay = true } = {}, callback) => {
     const room = rooms.get(roomId);
-    if (!room || room.status !== 'active') return;
+    if (!room || room.status !== 'active') {
+      if (callback) callback({ success: false, error: 'This party room is no longer active.' });
+      return;
+    }
 
     const participant = room.participants.get(socket.id);
     if (!isSocketRoomHost(socket, room)) {
       socket.emit('error:unauthorized', { message: 'Only the host can change songs.' });
+      if (callback) callback({ success: false, error: 'Only the host can change songs.' });
       return;
     }
 
-    if (trackIndex < 0 || trackIndex >= room.tracks.length) return;
+    if (!participant) {
+      if (callback) callback({ success: false, error: 'Join the room before changing tracks.' });
+      return;
+    }
+
+    if (!Number.isInteger(trackIndex) || trackIndex < 0 || trackIndex >= room.tracks.length) {
+      if (callback) callback({ success: false, error: 'That track is not available.' });
+      return;
+    }
 
     const now = Date.now();
     room.currentTrackIndex = trackIndex;
@@ -490,6 +502,12 @@ io.on('connection', (socket) => {
       isPlaying: autoPlay,
       position: 0,
       serverTimestamp: now
+    });
+    if (callback) callback({
+      success: true,
+      currentTrackIndex: trackIndex,
+      currentTrack: room.tracks[trackIndex],
+      isPlaying: autoPlay
     });
   });
 

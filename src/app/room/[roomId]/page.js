@@ -51,6 +51,8 @@ export default function LiveRoomPage() {
   const {
     isConnected,
     connectionError,
+    actionError,
+    clearActionError,
     clockOffset,
     roomState,
     currentTrack,
@@ -161,6 +163,16 @@ export default function LiveRoomPage() {
         <div style={{ margin: '20px auto 0', maxWidth: '720px', width: 'calc(100% - 40px)', padding: '14px 18px', borderRadius: '10px', background: 'rgba(255, 87, 87, 0.14)', border: '1px solid rgba(255, 87, 87, 0.5)', color: '#ffb0b0', textAlign: 'center' }}>
           {connectionError}
         </div>
+      )}
+
+      {actionError && (
+        <button
+          type="button"
+          onClick={clearActionError}
+          style={{ margin: '12px auto 0', maxWidth: '720px', width: 'calc(100% - 40px)', padding: '12px 16px', borderRadius: '10px', background: 'rgba(255, 87, 87, 0.14)', border: '1px solid rgba(255, 87, 87, 0.5)', color: '#ffb0b0', textAlign: 'center', cursor: 'pointer' }}
+        >
+          {actionError}
+        </button>
       )}
 
       {/* Moderation Warning Toast */}

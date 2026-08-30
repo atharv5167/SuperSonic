@@ -73,7 +73,7 @@ export default function UnifiedPlayer({
     }
 
     try {
-      ytPlayerRef.current = new window.YT.Player('youtube-player-element', {
+      ytPlayerRef.current = new window.YT.Player(ytContainerRef.current, {
         height: '240',
         width: '100%',
         videoId: youtubeVideoId,
@@ -110,6 +110,19 @@ export default function UnifiedPlayer({
       // Keep player intact across track changes
     };
   }, [isYouTube, youtubeVideoId, ytReady, getSynchronizedTime]);
+
+  // The YouTube iframe is removed when switching to an MP3. Dispose the old
+  // API instance so a later YouTube track gets a valid renderer instead of a
+  // stale reference to a detached DOM node.
+  useEffect(() => {
+    if (isYouTube || !ytPlayerRef.current) return;
+    try {
+      ytPlayerRef.current.destroy?.();
+    } catch (error) {
+      console.warn('YouTube Player cleanup error:', error);
+    }
+    ytPlayerRef.current = null;
+  }, [isYouTube]);
 
   useEffect(() => {
     if (!isYouTube || !ytPlayerRef.current) return;
@@ -250,7 +263,7 @@ export default function UnifiedPlayer({
             boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
             border: '1px solid var(--border-subtle)'
           }}>
-            <div id="youtube-player-element" style={{ width: '100%', height: '100%' }} />
+            <div ref={ytContainerRef} style={{ width: '100%', height: '100%' }} />
           </div>
         ) : (
           <div style={{
