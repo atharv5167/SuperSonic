@@ -6,7 +6,7 @@ import { extractYouTubeId, fetchYouTubeMetadata } from '../lib/utils';
 import { supabase } from '../lib/supabase/client';
 import { useAuth } from '../context/AuthContext';
 
-export default function TrackUploadModal({ isOpen, onClose, onAddTrack }) {
+export default function TrackUploadModal({ isOpen, onClose, onAddTrack, roomId }) {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('mp3'); // 'mp3' | 'youtube'
   const [isUploading, setIsUploading] = useState(false);
@@ -53,7 +53,10 @@ export default function TrackUploadModal({ isOpen, onClose, onAddTrack }) {
 
     try {
       if (!supabase || !user?.id) throw new Error('You must be signed in to upload music.');
-      const storagePath = `${user.id}/${crypto.randomUUID()}-${selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+      const safeRoomId = String(roomId || 'unknown-room').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const originalFilename = selectedFile.name;
+      const safeFilename = originalFilename.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const storagePath = `session/${safeRoomId}/${crypto.randomUUID()}-${safeFilename}`;
       const { error: uploadError } = await supabase.storage.from('party-audio').upload(storagePath, selectedFile, {
         contentType: selectedFile.type || 'audio/mpeg',
         upsert: false
@@ -67,6 +70,10 @@ export default function TrackUploadModal({ isOpen, onClose, onAddTrack }) {
         artist: mp3Artist.trim() || 'Host Upload',
         source_type: 'mp3',
         source_url: publicUrl.publicUrl,
+        storage_path: storagePath,
+        original_filename: originalFilename,
+        uploaded_by: user.id,
+        file_size: selectedFile.size,
         duration: 0,
         thumbnail_url: null
       };

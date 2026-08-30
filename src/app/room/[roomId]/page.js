@@ -414,6 +414,7 @@ export default function LiveRoomPage() {
       <TrackUploadModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
+        roomId={roomId}
         onAddTrack={handleAddTrack}
       />
 

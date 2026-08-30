@@ -105,6 +105,10 @@ async function persistRoom(room) {
     artist: track.artist || track.author || 'Unknown Artist',
     source_type: track.source_type || 'stream',
     source_url: track.source_url,
+    storage_path: track.storage_path || null,
+    original_filename: track.original_filename || (track.source_type === 'mp3' ? track.title : null),
+    uploaded_by: track.uploaded_by || null,
+    file_size: track.file_size || null,
     duration: track.duration || 0,
     thumbnail_url: track.thumbnail_url || null,
     order_index: index
@@ -126,6 +130,43 @@ async function persistHistory(room, summary) {
     tracks_played: summary.tracksPlayed
   });
   if (error) console.error('[History Persistence Error]', error.message);
+  return !error;
+}
+
+async function getActiveTrackUrls(tracks) {
+  if (!supabaseServer) return tracks;
+  const paths = tracks
+    .filter((track) => track.source_type === 'mp3' && track.storage_path)
+    .map((track) => track.storage_path);
+  if (!paths.length) return tracks;
+
+  const { data, error } = await supabaseServer.storage
+    .from('party-audio')
+    .createSignedUrls(paths, 60 * 60);
+  if (error) {
+    console.error('[Audio URL Error]', error.message);
+    return tracks;
+  }
+
+  const signedByPath = new Map((data || []).map((item) => [item.path, item.signedUrl]));
+  return tracks.map((track) => track.source_type === 'mp3' && track.storage_path
+    ? { ...track, source_url: signedByPath.get(track.storage_path) || null }
+    : track);
+}
+
+async function cleanupRoomAudio(room) {
+  if (!supabaseServer) return;
+  const paths = [...new Set(room.tracks
+    .filter((track) => track.source_type === 'mp3' && track.storage_path)
+    .map((track) => track.storage_path))];
+  if (!paths.length) return;
+
+  const { error } = await supabaseServer.storage.from('party-audio').remove(paths);
+  if (error) {
+    console.error(`[Audio Cleanup Error] Room: ${room.id}, Paths: ${paths.join(', ')}, Error: ${error.message}`);
+    return;
+  }
+  console.log(`[Audio Cleanup] Room: ${room.id}, Deleted MP3 objects: ${paths.length}`);
 }
 
 async function restoreRoom(roomId) {
@@ -323,6 +364,7 @@ io.on('connection', (socket) => {
       },
       participants: Array.from(room.participants.values())
     };
+    roomPayload.tracks = await getActiveTrackUrls(roomPayload.tracks || []);
 
     if (callback) {
       callback({
@@ -535,16 +577,17 @@ io.on('connection', (socket) => {
     console.log(`[Playlist Updated] Room: ${roomId}, Total Tracks: ${room.tracks.length}`);
 
     // Send updated playlist to all participants (or track summary if hiding upcoming)
+    const activeTracks = await getActiveTrackUrls(room.tracks);
     io.to(roomId).emit('playlist:updated', {
-      tracks: room.tracks,
+      tracks: activeTracks,
       currentTrackIndex: room.currentTrackIndex,
-      currentTrack: room.tracks[room.currentTrackIndex] || null
+      currentTrack: activeTracks[room.currentTrackIndex] || null
     });
     if (callback) callback({
       success: true,
-      tracks: room.tracks,
+      tracks: activeTracks,
       currentTrackIndex: room.currentTrackIndex,
-      currentTrack: room.tracks[room.currentTrackIndex] || null
+      currentTrack: activeTracks[room.currentTrackIndex] || null
     });
   });
 
@@ -659,7 +702,7 @@ io.on('connection', (socket) => {
   });
 
   // 13. End Party & Clean Up
-  socket.on('room:end_party', ({ roomId }, callback) => {
+  socket.on('room:end_party', async ({ roomId } = {}, callback) => {
     const room = rooms.get(roomId);
     if (!room) return;
 
@@ -685,7 +728,10 @@ io.on('connection', (socket) => {
         title: track.title,
         artist: track.artist,
         source_type: track.source_type,
-        source_url: track.source_url,
+        // Historical MP3 records retain metadata but never a broken playable URL.
+        source_url: track.source_type === 'mp3' ? null : track.source_url,
+        original_filename: track.original_filename || (track.source_type === 'mp3' ? track.title : null),
+        uploaded_by: track.uploaded_by || null,
         thumbnail_url: track.thumbnail_url
       }))
     };
@@ -693,7 +739,8 @@ io.on('connection', (socket) => {
     room.status = 'ended';
     room.endedAt = Date.now();
     room.playbackState.isPlaying = false;
-    persistHistory(room, summary);
+    const historyPersisted = await persistHistory(room, summary);
+    if (historyPersisted) await cleanupRoomAudio(room);
 
     console.log(`[Party Ended] Room: ${roomId}, Duration: ${durationSeconds}s, Peak: ${room.peakParticipants}`);
 
