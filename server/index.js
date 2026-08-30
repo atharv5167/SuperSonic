@@ -143,6 +143,10 @@ async function restoreRoom(roomId) {
   return room;
 }
 
+function isSocketRoomHost(socket, room) {
+  return Boolean(socket.user?.id && room?.hostId && socket.user.id === room.hostId);
+}
+
 async function requireApiUser(req, res, nextHandler) {
   const token = req.headers.authorization?.replace(/^Bearer\s+/i, '');
   const user = await authenticateToken(token);
@@ -349,7 +353,7 @@ io.on('connection', (socket) => {
     if (!room || room.status !== 'active') return;
 
     const participant = room.participants.get(socket.id);
-    if (!participant || (!participant.isHost && room.hostId !== participant.userId)) {
+    if (!isSocketRoomHost(socket, room)) {
       socket.emit('error:unauthorized', { message: 'Only the host can control playback.' });
       return;
     }
@@ -391,7 +395,7 @@ io.on('connection', (socket) => {
     if (!room || room.status !== 'active') return;
 
     const participant = room.participants.get(socket.id);
-    if (!participant || (!participant.isHost && room.hostId !== participant.userId)) {
+    if (!isSocketRoomHost(socket, room)) {
       socket.emit('error:unauthorized', { message: 'Only the host can control playback.' });
       return;
     }
@@ -426,7 +430,7 @@ io.on('connection', (socket) => {
     if (!room || room.status !== 'active') return;
 
     const participant = room.participants.get(socket.id);
-    if (!participant || (!participant.isHost && room.hostId !== participant.userId)) {
+    if (!isSocketRoomHost(socket, room)) {
       socket.emit('error:unauthorized', { message: 'Only the host can seek audio.' });
       return;
     }
@@ -457,7 +461,7 @@ io.on('connection', (socket) => {
     if (!room || room.status !== 'active') return;
 
     const participant = room.participants.get(socket.id);
-    if (!participant || (!participant.isHost && room.hostId !== participant.userId)) {
+    if (!isSocketRoomHost(socket, room)) {
       socket.emit('error:unauthorized', { message: 'Only the host can change songs.' });
       return;
     }
@@ -498,7 +502,7 @@ io.on('connection', (socket) => {
     }
 
     const participant = room.participants.get(socket.id);
-    if (!socket.user || socket.user.id !== room.hostId) {
+    if (!isSocketRoomHost(socket, room)) {
       socket.emit('error:unauthorized', { message: 'Only the host can modify the playlist.' });
       if (callback) callback({ success: false, error: 'Only the host can modify the playlist.' });
       return;
@@ -566,7 +570,7 @@ io.on('connection', (socket) => {
     if (!room) return;
 
     const participant = room.participants.get(socket.id);
-    if (!participant || !participant.isHost) return;
+    if (!isSocketRoomHost(socket, room)) return;
 
     for (const [sId, p] of room.participants.entries()) {
       if (p.userId === targetUserId) {
@@ -586,7 +590,7 @@ io.on('connection', (socket) => {
     if (!room) return;
 
     const participant = room.participants.get(socket.id);
-    if (!participant || !participant.isHost) return;
+    if (!isSocketRoomHost(socket, room)) return;
 
     for (const [sId, p] of room.participants.entries()) {
       if (p.userId === targetUserId && !p.isHost) {
@@ -611,7 +615,7 @@ io.on('connection', (socket) => {
     if (!room) return;
 
     const participant = room.participants.get(socket.id);
-    if (!participant || !participant.isHost) return;
+    if (!isSocketRoomHost(socket, room)) return;
 
     if (room.isMutedParticipants.has(targetUserId)) {
       room.isMutedParticipants.delete(targetUserId);
@@ -631,7 +635,7 @@ io.on('connection', (socket) => {
     if (!room) return;
 
     const participant = room.participants.get(socket.id);
-    if (!participant || (!participant.isHost && room.hostId !== participant.userId)) {
+    if (!isSocketRoomHost(socket, room)) {
       if (callback) callback({ success: false, error: 'Only the host can end the party.' });
       return;
     }
