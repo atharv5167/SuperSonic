@@ -4,14 +4,14 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 const isConfigured = Boolean(
-  supabaseUrl && 
-  supabaseAnonKey && 
-  !supabaseUrl.includes('placeholder') && 
+  supabaseUrl &&
+  supabaseAnonKey &&
+  !supabaseUrl.includes('placeholder') &&
   !supabaseAnonKey.includes('placeholder')
 );
 
 // Create real Supabase client if keys are present
-export const supabase = isConfigured 
+export const supabase = isConfigured
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
 

@@ -35,12 +35,12 @@ export default function LandingPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div className="landing-page" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Navbar />
 
       <main style={{ flex: 1 }}>
         {/* HERO SECTION */}
-        <section style={{
+        <section className="landing-hero landing-hero-bg" style={{
           position: 'relative',
           padding: '90px 0 70px',
           textAlign: 'center',
@@ -48,7 +48,7 @@ export default function LandingPage() {
         }}>
           <div className="container" style={{ position: 'relative', zIndex: 2 }}>
             {/* Top Pill */}
-            <div style={{
+            <div className="hero-actions hero-experience-pill" style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: '8px',
@@ -65,6 +65,7 @@ export default function LandingPage() {
             </div>
 
             {/* Main Headline */}
+            <div className="hero-copy">
             <h1 style={{
               fontSize: 'clamp(2.5rem, 5.5vw, 4.5rem)',
               lineHeight: 1.1,
@@ -73,8 +74,8 @@ export default function LandingPage() {
               maxWidth: '960px',
               margin: '0 auto 22px'
             }}>
-              Jam Together In <br />
-              <span className="gradient-text-purple">Perfect Synchrony</span> Anywhere.
+              Listen Together. <br />
+              <span className="gradient-text-purple">Anywhere.</span>
             </h1>
 
             <p style={{
@@ -84,11 +85,12 @@ export default function LandingPage() {
               margin: '0 auto 36px',
               lineHeight: 1.6
             }}>
-              Create private party rooms, drop your favorite MP3 tracks or YouTube links, and experience real-time synchronized playback with friends across any device.
+              Create a room, invite friends, and enjoy synchronized music and videos in real time.
             </p>
+            </div>
 
             {/* Hero CTA & Quick Join Bar */}
-            <div style={{
+            <div className="hero-cta" style={{
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -98,7 +100,7 @@ export default function LandingPage() {
             }}>
               <div style={{ display: 'flex', gap: '14px', width: '100%', justifyContent: 'center', flexWrap: 'wrap' }}>
                 <Link href="/room/create" className="btn-primary" style={{ padding: '16px 36px', fontSize: '1.05rem' }}>
-                  <Flame size={20} /> Host a Music Party
+                  <Flame size={20} /> Create Room
                 </Link>
 
                 <Link href="/auth" className="btn-secondary" style={{ padding: '16px 28px', fontSize: '1.05rem' }}>
@@ -150,7 +152,7 @@ export default function LandingPage() {
             </div>
 
             {/* Interactive Futuristic Visual Card */}
-            <div className="glass-panel glass-panel-glow" style={{
+            <div className="glass-panel glass-panel-glow landing-preview-card" style={{
               maxWidth: '820px',
               margin: '0 auto',
               padding: '28px',
@@ -326,9 +328,6 @@ export default function LandingPage() {
             High-Performance Music Synchronization Engine • Next.js & Supabase
           </p>
 
-          <Link href="/PROJECT_IMPLEMENTATION_GUIDE.md" style={{ fontSize: '0.85rem', color: 'var(--accent-cyan)', textDecoration: 'none' }}>
-            Architecture Guide ↗
-          </Link>
         </div>
       </footer>
     </div>
