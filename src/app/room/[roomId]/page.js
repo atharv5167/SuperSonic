@@ -58,6 +58,9 @@ export default function LiveRoomPage() {
     isPlaying,
     participants,
     chatMessages,
+    currentUser,
+    chatError,
+    clearChatError,
     partySummary,
     isPartyEnded,
     moderationAlert,
@@ -84,7 +87,9 @@ export default function LiveRoomPage() {
   });
 
   // Effective Host Verification
-  const isHost = isHostQuery || (roomState?.hostId === activeUserId);
+  // The server's authenticated join response is authoritative. The URL
+  // query is only a navigation hint and must never grant host controls.
+  const isHost = Boolean(currentUser?.isHost);
 
   // Save lightweight party summary when party ends
   useEffect(() => {
@@ -363,6 +368,8 @@ export default function LiveRoomPage() {
                   currentUserId={activeUserId}
                   isHost={isHost}
                   isMuted={isMuted}
+                  chatError={chatError}
+                  onClearChatError={clearChatError}
                   onSendMessage={sendChatMessage}
                   onWarnUser={warnUser}
                   onMuteUser={toggleMuteUser}

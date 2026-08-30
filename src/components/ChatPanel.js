@@ -8,6 +8,8 @@ export default function ChatPanel({
   currentUserId = null,
   isHost = false,
   isMuted = false,
+  chatError = null,
+  onClearChatError,
   onSendMessage,
   onWarnUser,
   onMuteUser,
@@ -60,6 +62,25 @@ export default function ChatPanel({
           </span>
         )}
       </div>
+
+      {chatError && (
+        <button
+          type="button"
+          onClick={onClearChatError}
+          style={{
+            border: '1px solid rgba(248, 113, 113, 0.45)',
+            background: 'rgba(239, 68, 68, 0.12)',
+            color: '#fca5a5',
+            borderRadius: '8px',
+            padding: '7px 10px',
+            marginBottom: '10px',
+            textAlign: 'left',
+            cursor: 'pointer'
+          }}
+        >
+          {chatError}
+        </button>
+      )}
 
       {/* Messages List */}
       <div style={{

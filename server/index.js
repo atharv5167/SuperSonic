@@ -263,7 +263,7 @@ io.on('connection', (socket) => {
   });
 
   // 3. Join Room
-  socket.on('room:join', async ({ roomId }, callback) => {
+  socket.on('room:join', async ({ roomId, username: requestedUsername, avatar: requestedAvatar } = {}, callback) => {
     let room = rooms.get(roomId);
 
     if (!room) room = await restoreRoom(roomId);
@@ -294,8 +294,8 @@ io.on('connection', (socket) => {
     currentUser = {
       socketId: socket.id,
       userId: socket.user.id,
-      username: socket.user.user_metadata?.display_name || socket.user.user_metadata?.username || username || socket.user.email,
-      avatar: socket.user.user_metadata?.avatar_url || avatar || null,
+      username: socket.user.user_metadata?.display_name || socket.user.user_metadata?.username || requestedUsername || socket.user.email,
+      avatar: socket.user.user_metadata?.avatar_url || requestedAvatar || null,
       isHost: socket.user.id === room.hostId,
       joinedAt: Date.now()
     };
@@ -531,19 +531,29 @@ io.on('connection', (socket) => {
   });
 
   // 9. Real-Time Chat & System Messaging
-  socket.on('chat:send', ({ roomId, content }) => {
+  socket.on('chat:send', ({ roomId, content } = {}, callback) => {
     const room = rooms.get(roomId);
-    if (!room || room.status !== 'active') return;
-
-    const participant = room.participants.get(socket.id);
-    if (!participant) return;
-
-    if (room.isMutedParticipants.has(participant.userId)) {
-      socket.emit('chat:error', { message: 'You are currently muted by the host.' });
+    if (!room || room.status !== 'active') {
+      if (callback) callback({ success: false, error: 'This party room is no longer active.' });
       return;
     }
 
-    if (!content || !content.trim()) return;
+    const participant = room.participants.get(socket.id);
+    if (!participant) {
+      if (callback) callback({ success: false, error: 'Join the room before sending messages.' });
+      return;
+    }
+
+    if (room.isMutedParticipants.has(participant.userId)) {
+      socket.emit('chat:error', { message: 'You are currently muted by the host.' });
+      if (callback) callback({ success: false, error: 'You are currently muted by the host.' });
+      return;
+    }
+
+    if (!content || !content.trim()) {
+      if (callback) callback({ success: false, error: 'Message cannot be empty.' });
+      return;
+    }
 
     const message = {
       id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -562,6 +572,7 @@ io.on('connection', (socket) => {
     }
 
     io.to(roomId).emit('chat:new_message', message);
+    if (callback) callback({ success: true, message });
   });
 
   // 10. Host Moderation: Warn User

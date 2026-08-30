@@ -21,6 +21,8 @@ export function useSyncEngine({ roomId, userId, username, avatar, isHost }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [participants, setParticipants] = useState([]);
   const [chatMessages, setChatMessages] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [chatError, setChatError] = useState(null);
   const [partySummary, setPartySummary] = useState(null);
   const [isPartyEnded, setIsPartyEnded] = useState(false);
   const [moderationAlert, setModerationAlert] = useState(null);
@@ -116,6 +118,7 @@ export function useSyncEngine({ roomId, userId, username, avatar, isHost }) {
           setConnectionError(null);
           const room = response.room;
           setRoomState(room);
+          setCurrentUser(response.currentUser || null);
           setCurrentTrack(room.currentTrack);
           setCurrentTrackIndex(room.currentTrackIndex || 0);
           setIsPlaying(Boolean(room.playbackState?.isPlaying));
@@ -136,8 +139,19 @@ export function useSyncEngine({ roomId, userId, username, avatar, isHost }) {
       });
     });
 
-    socketInstance.on('connect_error', () => {
-      setConnectionError('Authentication failed. Please sign in again.');
+    socketInstance.on('connect_error', (error) => {
+      setConnectionError(error?.message === 'Authentication required'
+        ? 'Please sign in again to join this room.'
+        : 'Unable to connect to the room. Please try again.');
+    });
+
+    // Refresh the Supabase access token before Socket.IO reconnects. Without
+    // this, a long-lived tab can reconnect with an expired token.
+    socketInstance.io.on('reconnect_attempt', async () => {
+      const { data: { session: refreshedSession } } = await supabase.auth.getSession();
+      if (refreshedSession?.access_token) {
+        socketInstance.auth = { accessToken: refreshedSession.access_token };
+      }
     });
 
     socketInstance.on('error:unauthorized', (data) => {
@@ -221,6 +235,10 @@ export function useSyncEngine({ roomId, userId, username, avatar, isHost }) {
     // Handle Chat Messages
     socketInstance.on('chat:new_message', (msg) => {
       setChatMessages(prev => [...prev, msg]);
+    });
+
+    socketInstance.on('chat:error', (data) => {
+      setChatError(data?.message || 'Unable to send that message.');
     });
 
     socketInstance.on('chat:system_message', (msg) => {
@@ -348,11 +366,15 @@ export function useSyncEngine({ roomId, userId, username, avatar, isHost }) {
 
   // Action: Send Chat
   const sendChatMessage = useCallback((content) => {
-    if (!socket || !content?.trim()) return;
+    if (!socket || !content?.trim()) return false;
+    setChatError(null);
     socket.emit('chat:send', {
       roomId,
       content: content.trim()
+    }, (response) => {
+      if (!response?.success) setChatError(response?.error || 'Unable to send that message.');
     });
+    return true;
   }, [socket, roomId]);
 
   // Host Moderation Actions
@@ -402,6 +424,9 @@ export function useSyncEngine({ roomId, userId, username, avatar, isHost }) {
     isPlaying,
     participants,
     chatMessages,
+    currentUser,
+    chatError,
+    clearChatError: () => setChatError(null),
     partySummary,
     isPartyEnded,
     moderationAlert,
