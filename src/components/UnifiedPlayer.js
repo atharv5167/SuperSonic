@@ -73,7 +73,14 @@ export default function UnifiedPlayer({
     }
 
     try {
-      ytPlayerRef.current = new window.YT.Player(ytContainerRef.current, {
+      // YouTube mutates/replaces the element passed to YT.Player. Keep that
+      // element outside React's managed children to prevent removeChild
+      // errors when switching between tracks or MP3/YouTube sources.
+      const playerHost = ytContainerRef.current;
+      if (!playerHost) return;
+      const playerElement = document.createElement('div');
+      playerHost.appendChild(playerElement);
+      ytPlayerRef.current = new window.YT.Player(playerElement, {
         height: '240',
         width: '100%',
         videoId: youtubeVideoId,
@@ -122,6 +129,7 @@ export default function UnifiedPlayer({
       console.warn('YouTube Player cleanup error:', error);
     }
     ytPlayerRef.current = null;
+    ytContainerRef.current?.replaceChildren();
   }, [isYouTube]);
 
   useEffect(() => {
