@@ -413,7 +413,7 @@ h1, h2, h3, h4, h5, h6 {
 .landing-hero-bg {
   background-image:
     linear-gradient(180deg, rgba(0, 1, 23, 0.48) 0%, rgba(0, 1, 23, 0.24) 42%, rgba(0, 1, 23, 0.62) 100%),
-    url('/landing-aurora.png');
+    url('/landing-aurora.webp');
   background-position: center top;
   background-size: cover;
   background-repeat: no-repeat;
