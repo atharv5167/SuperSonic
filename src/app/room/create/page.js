@@ -109,36 +109,36 @@ export default function CreateRoomPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div className="create-page" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Navbar />
 
       <main className="container" style={{ flex: 1, padding: '40px 24px', maxWidth: '880px' }}>
-        <div className="glass-panel glass-panel-glow animate-fade-in" style={{
+        <div className="glass-panel glass-panel-glow animate-fade-in create-card" style={{
           padding: '36px',
           borderRadius: 'var(--radius-xl)',
           background: 'linear-gradient(180deg, rgba(20, 27, 54, 0.9) 0%, rgba(10, 14, 28, 0.98) 100%)'
         }}>
           {/* Header */}
-          <div style={{ marginBottom: '28px' }}>
+          <div className="create-header" style={{ marginBottom: '28px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <div style={{
+              <div className="create-brand-mark" style={{
                 width: '42px',
                 height: '42px',
                 borderRadius: '12px',
-                background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
+                background: 'rgba(20, 43, 44, 0.9)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 0 20px rgba(139, 92, 246, 0.5)'
+                boxShadow: '0 0 20px rgba(0, 199, 183, 0.28)'
               }}>
-                <Flame size={24} color="#ffffff" />
+                <Radio size={24} color="#D0FF4A" />
               </div>
               <h1 style={{ fontSize: '2rem', fontWeight: '800', color: '#fff' }}>
-                Create Synchronized Music Party
+                Create Room
               </h1>
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-              Add your MP3 tracks or YouTube links to start a synchronized broadcast room for up to 2,000 listeners.
+              Set up your room, add music, and invite your friends.
             </p>
           </div>
 
@@ -182,7 +182,7 @@ export default function CreateRoomPage() {
               <button
                 type="button"
                 onClick={() => setIsAddModalOpen(true)}
-                className="btn-primary"
+                className="btn-primary playlist-add-track"
                 style={{ padding: '8px 18px', fontSize: '0.85rem' }}
               >
                 <Plus size={16} /> Add Track (MP3 / YouTube)
@@ -305,13 +305,13 @@ export default function CreateRoomPage() {
 
           {/* Launch Button */}
           <button
+            className="btn-primary create-actions"
             type="button"
             onClick={handleLaunchParty}
             disabled={isCreating || tracks.length === 0}
-            className="btn-primary"
             style={{ width: '100%', padding: '16px', fontSize: '1.1rem' }}
           >
-            <Radio size={20} /> Launch & Host Party Room <ArrowRight size={20} />
+            <Radio size={20} /> Create Room <ArrowRight size={20} />
           </button>
         </div>
       </main>

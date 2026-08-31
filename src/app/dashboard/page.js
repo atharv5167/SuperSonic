@@ -48,12 +48,12 @@ export default function DashboardPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div className="dashboard-page" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Navbar />
 
       <main className="container" style={{ flex: 1, padding: '40px 24px' }}>
         {/* Welcome Header */}
-        <div className="glass-panel glass-panel-glow" style={{
+        <div className="glass-panel glass-panel-glow dashboard-welcome" style={{
           padding: '32px',
           borderRadius: 'var(--radius-xl)',
           background: 'linear-gradient(135deg, rgba(28, 38, 75, 0.8) 0%, rgba(13, 18, 36, 0.95) 100%)',
@@ -90,7 +90,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '12px' }}>
+          <div className="dashboard-create-action" style={{ display: 'flex', gap: '12px' }}>
             <Link href="/room/create" className="btn-primary" style={{ padding: '14px 28px' }}>
               <PlusCircle size={18} /> Create New Party
             </Link>
@@ -98,14 +98,14 @@ export default function DashboardPage() {
         </div>
 
         {/* Action Grid: Quick Join & Quick Info */}
-        <div style={{
+        <div className="dashboard-actions" style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
           gap: '24px',
           marginBottom: '40px'
         }}>
           {/* Quick Join Room Card */}
-          <div className="glass-panel" style={{ padding: '28px', borderRadius: 'var(--radius-lg)' }}>
+          <div className="glass-panel dashboard-join-card" style={{ padding: '28px', borderRadius: 'var(--radius-lg)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
               <Radio size={22} color="var(--accent-cyan)" />
               <h3 style={{ fontSize: '1.2rem', color: '#fff' }}>Join an Active Room</h3>
@@ -130,7 +130,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Quick Create Highlight Card */}
-          <div className="glass-panel" style={{ padding: '28px', borderRadius: 'var(--radius-lg)' }}>
+          <div className="glass-panel dashboard-host-card" style={{ padding: '28px', borderRadius: 'var(--radius-lg)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
               <Music size={22} color="var(--primary-light)" />
               <h3 style={{ fontSize: '1.2rem', color: '#fff' }}>Host Your Own Room</h3>
@@ -146,15 +146,15 @@ export default function DashboardPage() {
         </div>
 
         {/* Lightweight Party History Section */}
-        <div className="glass-panel" style={{ padding: '28px', borderRadius: 'var(--radius-lg)' }}>
+        <div className="glass-panel history-panel" style={{ padding: '28px', borderRadius: 'var(--radius-lg)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <History size={20} color="var(--accent-amber)" />
               <h3 style={{ fontSize: '1.25rem', color: '#fff' }}>History</h3>
             </div>
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <button type="button" className={historyTab === 'hosted' ? 'btn-primary' : 'btn-secondary'} onClick={() => setHistoryTab('hosted')} style={{ padding: '7px 12px', fontSize: '0.8rem' }}>Hosted</button>
-              <button type="button" className={historyTab === 'participated' ? 'btn-primary' : 'btn-secondary'} onClick={() => setHistoryTab('participated')} style={{ padding: '7px 12px', fontSize: '0.8rem' }}>Participated</button>
+            <div className="history-tabs" style={{ display: 'flex', gap: '6px' }}>
+              <button type="button" className={`history-tab ${historyTab === 'hosted' ? 'active' : ''}`} onClick={() => setHistoryTab('hosted')}>Hosted</button>
+              <button type="button" className={`history-tab ${historyTab === 'participated' ? 'active' : ''}`} onClick={() => setHistoryTab('participated')}>Participated</button>
             </div>
           </div>
 
@@ -169,6 +169,7 @@ export default function DashboardPage() {
               {visibleHistory.map((item, index) => (
                 <div
                   key={index}
+                  className="history-entry"
                   style={{
                     display: 'flex',
                     alignItems: 'center',

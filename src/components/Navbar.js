@@ -3,13 +3,13 @@
 import React from 'react';
 import Link from 'next/link';
 import { useAuth } from '../context/AuthContext';
-import { Radio, PlusCircle, LogIn, LogOut, User, Music, Compass } from 'lucide-react';
+import { PlusCircle, LogIn, LogOut, User, Music, Compass } from 'lucide-react';
 
 export default function Navbar({ currentRoomCode = null, isHost = false, onLeaveRoom = null }) {
   const { user, profile, signOut } = useAuth();
 
   return (
-    <header style={{
+    <header className="app-navbar" style={{
       position: 'sticky',
       top: 0,
       zIndex: 50,
@@ -33,17 +33,17 @@ export default function Navbar({ currentRoomCode = null, isHost = false, onLeave
           textDecoration: 'none',
           color: '#fff'
         }}>
-          <div style={{
+          <div className="navbar-brand-mark" style={{
             width: '42px',
             height: '42px',
             borderRadius: '12px',
-            background: 'linear-gradient(135deg, #8b5cf6 0%, #06b6d4 100%)',
+            background: 'rgba(20, 43, 44, 0.9)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 0 20px rgba(139, 92, 246, 0.5)'
+            boxShadow: '0 0 20px rgba(0, 199, 183, 0.26)',
           }}>
-            <Radio size={22} color="#ffffff" />
+            <img src="/favicon.svg?v=2" alt="SuperSonic" width="28" height="28" />
           </div>
 
           <div>
@@ -59,7 +59,7 @@ export default function Navbar({ currentRoomCode = null, isHost = false, onLeave
               }}>
                 SuperSonic
               </span>
-              <span style={{
+              <span className="brand-sync-label" style={{
                 fontSize: '0.65rem',
                 fontWeight: '700',
                 background: 'rgba(139, 92, 246, 0.25)',
@@ -76,7 +76,7 @@ export default function Navbar({ currentRoomCode = null, isHost = false, onLeave
 
         {/* Current Room Active Badge (if in room) */}
         {currentRoomCode && (
-          <div style={{
+          <div className="current-room-pill" style={{
             display: 'flex',
             alignItems: 'center',
             gap: '10px',
@@ -103,7 +103,7 @@ export default function Navbar({ currentRoomCode = null, isHost = false, onLeave
 
         {/* Navigation & User Menu */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-          <Link href="/room/create" className="btn-primary" style={{ padding: '9px 18px', fontSize: '0.9rem' }}>
+          <Link href="/room/create" className="btn-primary desktop-create-link" style={{ padding: '9px 18px', fontSize: '0.9rem' }}>
             <PlusCircle size={17} /> Create Party
           </Link>
 
@@ -126,7 +126,7 @@ export default function Navbar({ currentRoomCode = null, isHost = false, onLeave
                   alt="avatar"
                   style={{ width: '26px', height: '26px', borderRadius: '50%', background: '#1e293b' }}
                 />
-                <span style={{ fontSize: '0.85rem', fontWeight: '600', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span className="desktop-user-name" style={{ fontSize: '0.85rem', fontWeight: '600', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {profile?.display_name || user.display_name || user.email?.split('@')[0] || 'Jammer'}
                 </span>
               </Link>

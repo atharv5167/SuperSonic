@@ -275,7 +275,7 @@ export default function UnifiedPlayer({
   };
 
   return (
-    <div className="glass-panel" style={{
+    <div className="glass-panel room-player-card" style={{
       padding: '24px',
       borderRadius: 'var(--radius-xl)',
       border: '1px solid var(--border-glow)',
@@ -309,7 +309,7 @@ export default function UnifiedPlayer({
       />
 
       {/* Main Track Display Section */}
-      <div style={{
+      <div className="player-track-grid" style={{
         display: 'grid',
         gridTemplateColumns: isYouTube ? '1fr 1fr' : '120px 1fr auto',
         gap: '24px',
@@ -318,7 +318,7 @@ export default function UnifiedPlayer({
       }}>
         {/* Album Artwork or YouTube Embed */}
         {isYouTube ? (
-          <div style={{
+        <div style={{
             borderRadius: 'var(--radius-md)',
             overflow: 'hidden',
             background: '#000',
@@ -448,7 +448,7 @@ export default function UnifiedPlayer({
       </div>
 
       {/* Control Buttons & Volume */}
-      <div style={{
+      <div className="player-controls" style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',

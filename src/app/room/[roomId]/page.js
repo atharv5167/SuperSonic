@@ -156,7 +156,7 @@ export default function LiveRoomPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)' }}>
+    <div className="room-page" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)' }}>
       <Navbar currentRoomCode={roomId} isHost={isHost} onLeaveRoom={handleLeaveRoom} />
 
       {connectionError && (
@@ -209,7 +209,7 @@ export default function LiveRoomPage() {
       {/* Main Room Layout */}
       <main className="container" style={{ flex: 1, padding: '24px 16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
         {/* Room Header Controls */}
-        <div className="glass-panel" style={{
+        <div className="glass-panel room-header-card" style={{
           padding: '16px 24px',
           borderRadius: 'var(--radius-lg)',
           display: 'flex',
@@ -250,7 +250,7 @@ export default function LiveRoomPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button
               onClick={() => setIsQrOpen(true)}
-              className="btn-secondary"
+              className="btn-secondary room-share-action"
               style={{ padding: '8px 16px', fontSize: '0.85rem' }}
             >
               <Share2 size={16} /> Invite Friends / QR
@@ -274,14 +274,14 @@ export default function LiveRoomPage() {
         </div>
 
         {/* Dynamic Multi-Column Jamming Layout */}
-        <div style={{
+        <div className="room-layout" style={{
           display: 'grid',
           gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr)',
           gap: '20px',
           flex: 1
         }}>
           {/* LEFT COLUMN: Unified Media Player & Visualizer */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div className="room-main-column" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <UnifiedPlayer
               currentTrack={currentTrack || roomState?.tracks?.[currentTrackIndex]}
               isPlaying={isPlaying}
@@ -321,9 +321,9 @@ export default function LiveRoomPage() {
           </div>
 
           {/* RIGHT COLUMN: Sidebar (Chat & Participants) */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', height: '100%' }}>
+          <div className="room-side-column" style={{ display: 'flex', flexDirection: 'column', gap: '14px', height: '100%' }}>
             {/* Tab Navigation */}
-            <div style={{
+            <div className="room-tabs" style={{
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
               gap: '6px',
@@ -373,7 +373,7 @@ export default function LiveRoomPage() {
             </div>
 
             {/* Tab Content */}
-            <div style={{ flex: 1, minHeight: '480px' }}>
+            <div className="room-tab-content" style={{ flex: 1, minHeight: '480px' }}>
               {activeTab === 'chat' ? (
                 <ChatPanel
                   messages={chatMessages}
