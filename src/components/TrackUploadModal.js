@@ -273,7 +273,7 @@ export default function TrackUploadModal({ isOpen, onClose, onAddTrack, roomId }
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="audio/mp3,audio/mpeg,audio/wav"
+                accept=".mp3,audio/mpeg,audio/wav,audio/*"
                 onChange={handleFileChange}
                 style={{ display: 'none' }}
               />
@@ -289,8 +289,15 @@ export default function TrackUploadModal({ isOpen, onClose, onAddTrack, roomId }
                 </div>
               ) : (
                 <div>
-                  <p style={{ fontWeight: '600', color: '#fff', fontSize: '0.95rem' }}>Click or Drag & Drop MP3 File</p>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '4px' }}>Supports MP3, WAV up to 50MB</p>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="btn-secondary browse-file-button"
+                    style={{ padding: '10px 18px', fontSize: '0.85rem' }}
+                  >
+                    <Upload size={16} /> Browse and Upload File
+                  </button>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-dim)', marginTop: '8px' }}>MP3 or WAV up to 50MB</p>
                 </div>
               )}
             </div>
