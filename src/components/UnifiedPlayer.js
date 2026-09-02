@@ -42,6 +42,7 @@ export default function UnifiedPlayer({
   const isDraggingRef = useRef(false);
   const pendingPlayRef = useRef(false);
   const audioRetryRef = useRef(false);
+  const audioSourceGenerationRef = useRef(0);
   const [ytReady, setYtReady] = useState(false);
 
   const isYouTube = currentTrack?.source_type === 'youtube' || Boolean(extractYouTubeId(currentTrack?.source_url));
@@ -146,7 +147,18 @@ export default function UnifiedPlayer({
     const audio = audioRef.current;
     if (!audio || isYouTube) return;
 
+    const sourceGeneration = ++audioSourceGenerationRef.current;
     let cancelled = false;
+    let playWhenReady = null;
+    const isCurrentSource = () => !cancelled && audioSourceGenerationRef.current === sourceGeneration;
+    const syncPosition = () => {
+      if (!isCurrentSource()) return;
+      const expectedTime = getSynchronizedTime();
+      if (audio.readyState >= HTMLMediaElement.HAVE_METADATA && Math.abs(audio.currentTime - expectedTime) > 0.15) {
+        audio.currentTime = expectedTime;
+      }
+    };
+
     const applyAudioSource = async () => {
       // Resolve a fresh URL for temporary private session files. The server
       // normally provides one, while this client fallback also handles an
@@ -159,33 +171,38 @@ export default function UnifiedPlayer({
         if (error) console.warn('Could not sign MP3 URL:', error.message);
         sourceUrl = data?.signedUrl || sourceUrl;
       }
-      if (cancelled || !sourceUrl) return;
+      if (!isCurrentSource() || typeof sourceUrl !== 'string' || !sourceUrl.trim()) return;
 
-      if (audio.src !== sourceUrl) {
+      if (audio.src !== sourceUrl || audio.error) {
         audioRetryRef.current = false;
         audio.src = sourceUrl;
         audio.load();
       }
 
-      const expectedTime = getSynchronizedTime();
-      if (Math.abs(audio.currentTime - expectedTime) > 0.15) {
-        audio.currentTime = expectedTime;
-      }
+      syncPosition();
 
       if (isPlaying) {
         pendingPlayRef.current = true;
-        const playWhenReady = () => {
-          if (!pendingPlayRef.current || cancelled) return;
+        playWhenReady = () => {
+          if (!pendingPlayRef.current || !isCurrentSource() || audio.error || !audio.currentSrc) return;
+          syncPosition();
           audio.play().then(() => {
             pendingPlayRef.current = false;
           }).catch(err => {
-            console.warn('Audio playback wait:', err.name, err.message);
+            pendingPlayRef.current = false;
+            if (err?.name === 'NotAllowedError') {
+              console.warn('MP3 playback requires a participant gesture:', err.message);
+            } else {
+              console.error('MP3 playback failed:', err?.name || 'PlaybackError', err?.message || 'Unknown media error');
+            }
           });
         };
         if (audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
           playWhenReady();
         } else {
+          audio.addEventListener('loadedmetadata', syncPosition, { once: true });
           audio.addEventListener('canplay', playWhenReady, { once: true });
+          audio.addEventListener('canplaythrough', playWhenReady, { once: true });
         }
       } else {
         pendingPlayRef.current = false;
@@ -196,6 +213,11 @@ export default function UnifiedPlayer({
     return () => {
       cancelled = true;
       pendingPlayRef.current = false;
+      audio.removeEventListener('loadedmetadata', syncPosition);
+      if (playWhenReady) {
+        audio.removeEventListener('canplay', playWhenReady);
+        audio.removeEventListener('canplaythrough', playWhenReady);
+      }
     };
   }, [currentTrack, isPlaying, isYouTube, getSynchronizedTime]);
 
@@ -289,6 +311,7 @@ export default function UnifiedPlayer({
         onLoadedMetadata={(e) => setDuration(e.target.duration || 0)}
         onError={async (e) => {
           const track = currentTrack;
+          const sourceGeneration = audioSourceGenerationRef.current;
           if (audioRetryRef.current || !track?.storage_path || !supabase) return;
           audioRetryRef.current = true;
           const { data, error } = await supabase.storage
@@ -298,6 +321,7 @@ export default function UnifiedPlayer({
             console.error('MP3 could not be loaded from Supabase Storage:', error?.message || 'No signed URL returned');
             return;
           }
+          if (audioSourceGenerationRef.current !== sourceGeneration || audioRef.current !== e.currentTarget) return;
           e.currentTarget.src = data.signedUrl;
           e.currentTarget.load();
           if (isPlaying) e.currentTarget.play().catch(() => {});
